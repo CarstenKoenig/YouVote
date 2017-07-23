@@ -6,7 +6,7 @@ letting you add two numbers (yeah I know - high science)
 ## getting started
 if you have a **bash** shell available you can just use the
 
-    ./start.sh
+    ./make.sh
 	
 script to get started - if not just follow these steps:	
 
