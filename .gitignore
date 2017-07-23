@@ -1,0 +1,14 @@
+
+## stack
+
+.stack-work/
+
+## elm
+
+elm-stuff/
+static/js/client.js
+src/client/api.elm
+
+## emacs
+TAGS
+.#*
