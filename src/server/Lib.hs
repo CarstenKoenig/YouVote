@@ -1,8 +1,6 @@
 {-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators   #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
 module Lib
     ( startApp
     , app
@@ -10,11 +8,8 @@ module Lib
     , API
     ) where
 
-import           Data.Aeson
-import           Data.Aeson.TH
 import           Data.Text (Text)
 import qualified Data.Text as Text
-import           GHC.Generics
 import qualified Lucid as Html
 import           Lucid (Html)
 import           Network.Wai
@@ -22,13 +17,7 @@ import           Network.Wai.Handler.Warp
 import           Servant
 import           Servant.HTML.Lucid(HTML)
 
-data Addition = Addition
-  { operandA      :: Int
-  , operandB      :: Int
-  } deriving (Eq, Show, Generic)
-
-$(deriveJSON defaultOptions ''Addition)
-
+import           Poll.Models
 
 ----------------------------------------------------------------------
 -- Type-Level part of the Servant app: 
@@ -43,7 +32,7 @@ type Pages =
   Get '[HTML] (Html ())
 
 
-type API = "add" :> ReqBody '[JSON] Addition :> Post '[JSON] Int
+type API = "api" :> "add" :> ReqBody '[JSON] Addition :> Post '[JSON] Int
 
 
 ----------------------------------------------------------------------

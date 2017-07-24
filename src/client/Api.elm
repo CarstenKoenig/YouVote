@@ -25,8 +25,8 @@ encodeAddition x =
         , ( "operandB", Json.Encode.int x.operandB )
         ]
 
-postAdd : String -> Addition -> Http.Request (Int)
-postAdd urlBase body =
+postApiAdd : String -> Addition -> Http.Request (Int)
+postApiAdd urlBase body =
     Http.request
         { method =
             "POST"
@@ -35,6 +35,7 @@ postAdd urlBase body =
         , url =
             String.join "/"
                 [ urlBase
+                , "api"
                 , "add"
                 ]
         , body =

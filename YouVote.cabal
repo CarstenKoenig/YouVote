@@ -16,11 +16,25 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src/server
   exposed-modules:     Lib
+                     , Database.Model
+                     , Poll.Models
   build-depends:       base >= 4.7 && < 5
                      , aeson
+                     , containers
+                     , http-api-data
+                     , monad-logger
+                     , mtl
+                     , network-uri
+                     , persistent
+                     , persistent-template
+                     , servant-elm
                      , servant-lucid
                      , servant-server
+                     , resourcet
+                     , resource-pool
                      , text
+                     , time
+                     , transformers
                      , lucid
                      , wai
                      , warp

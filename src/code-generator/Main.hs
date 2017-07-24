@@ -7,10 +7,11 @@ module Main where
 import           Data.Proxy  (Proxy (Proxy))
 import           Elm         (Spec (Spec), specsToDir, toElmTypeSource,
                               toElmDecoderSource, toElmEncoderSource)
-import           Servant.Elm (ElmType, ElmOptions (..), defElmImports, defElmOptions,
+import           Servant.Elm (ElmOptions (..), defElmImports, defElmOptions,
                               generateElmForAPIWith, UrlPrefix (Dynamic))
 
-import           Lib         (API, Addition)
+import           Lib         (API)
+import           Poll.Models (Addition)
 
 
 elmOpts :: ElmOptions
@@ -32,6 +33,3 @@ specs =
 
 main :: IO ()
 main = specsToDir specs "src/client"
-
-
-instance ElmType Addition

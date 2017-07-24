@@ -55,7 +55,7 @@ update msg model =
                     Ok add ->
                         let
                             request =
-                                postAdd "http://localhost:8080" add
+                                postApiAdd "http://localhost:8080" add
                         in
                             model ! [ Http.send GotResult request ]
 
