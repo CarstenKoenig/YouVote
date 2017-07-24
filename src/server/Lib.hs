@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE TypeOperators   #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 module Lib
     ( startApp
     , app
@@ -79,14 +81,31 @@ apiServer =
     addHandler add =
       pure $ operandA add + operandB add
     listPollsHandler =
-      undefined
+      pure examplePolls
     getPollHandler pollId =
-      undefined
+      case lookup (fromIntegral pollId) (zip [1..] examplePolls) of
+        Nothing -> throwError notFound
+        Just poll -> pure poll
     votePollHandler pollId choiceId =
       undefined
     createPollHandler newPoll =
       undefined
+    notFound =
+      err404 { errBody = "poll not found" }
 
+
+examplePolls :: [Poll]
+examplePolls =
+  [ Poll 1 "What's your favorite programming language?"
+    [ PollChoice 1 "Haskell" (Just 21)
+    , PollChoice 2 "Elm" (Just 13) 
+    , PollChoice 3 "JavaScript" (Just 5)
+    ]
+  , Poll 2 "What's your favorite metal band?"
+    [ PollChoice 4 "Metal what?" Nothing
+    , PollChoice 5 "Justin Bieber" Nothing
+    ]
+  ]
 
 ----------------------------------------------------------------------
 -- Html Pages
