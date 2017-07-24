@@ -8,6 +8,7 @@ module Lib
     , API
     ) where
 
+import           Data.Int (Int64)
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Lucid as Html
@@ -32,7 +33,12 @@ type Pages =
   Get '[HTML] (Html ())
 
 
-type API = "api" :> "add" :> ReqBody '[JSON] Addition :> Post '[JSON] Int
+type API = "api" :>
+  ("add" :> ReqBody '[JSON] Addition :> Post '[JSON] Int
+  :<|> "poll" :> "list" :> Get '[JSON] [Poll]
+  :<|> "poll" :> Capture "pollId" Int64 :> Get '[JSON] Poll
+  :<|> "poll" :> Capture "pollId" Int64 :> "vote" :> Capture "choiceId" Int64 :> Post '[JSON] Poll
+  :<|> "poll" :> "create" :> ReqBody '[JSON] CreatePoll :> Put '[JSON] Poll)
 
 
 ----------------------------------------------------------------------
@@ -63,10 +69,23 @@ server =
 -- Rest API section
 
 apiServer :: Server API
-apiServer = addHandler
+apiServer =
+  addHandler
+  :<|> listPollsHandler
+  :<|> getPollHandler
+  :<|> votePollHandler
+  :<|> createPollHandler
   where
     addHandler add =
       pure $ operandA add + operandB add
+    listPollsHandler =
+      undefined
+    getPollHandler pollId =
+      undefined
+    votePollHandler pollId choiceId =
+      undefined
+    createPollHandler newPoll =
+      undefined
 
 
 ----------------------------------------------------------------------

@@ -8,10 +8,12 @@ module Poll.Models
     ( Addition (..)
     , Poll (..)
     , PollChoice (..)
+    , CreatePoll (..)
     ) where
 
 import           Data.Aeson
 import           Data.Aeson.TH
+import           Data.Int (Int64)
 import           Data.Text (Text)
 import           GHC.Generics
 import           Servant.Elm (ElmType)
@@ -26,20 +28,32 @@ $(deriveJSON defaultOptions ''Addition)
 
 
 data Poll = Poll
-  { question :: Text
+  { pollId   :: Int64
+  , question :: Text
   , choices  :: [PollChoice]
   } deriving (Eq, Show, Generic)
 
 
 data PollChoice = PollChoice
-  { answer :: Text
+  { choiceId :: Int64
+  , answer :: Text
   , votes  :: Maybe Int
   } deriving (Eq, Show, Generic)
 
 
+data CreatePoll = CreatePoll
+  { newQuestion :: Text
+  , newChoices  :: [Text]
+  } deriving (Eq, Show, Generic)
+
+
+
 $(deriveJSON defaultOptions ''PollChoice)
 $(deriveJSON defaultOptions ''Poll)
+$(deriveJSON defaultOptions ''CreatePoll)
+
 
 instance ElmType Addition
 instance ElmType PollChoice
 instance ElmType Poll
+instance ElmType CreatePoll
