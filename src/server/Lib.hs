@@ -17,6 +17,7 @@ import qualified Lucid as Html
 import           Lucid (Html)
 import           Network.Wai
 import           Network.Wai.Handler.Warp
+import           Network.Wai.Middleware.RequestLogger (logStdoutDev)
 import           Servant
 import           Servant.HTML.Lucid(HTML)
 
@@ -51,7 +52,7 @@ type API = "api" :>
 startApp :: IO ()
 startApp = do
   putStrLn "running application on http://localhost:8080"
-  run 8080 app
+  run 8080 $ logStdoutDev app
 
 
 -- | the Servant-Application as a WAI Application
