@@ -17,7 +17,7 @@ import           Data.Proxy (Proxy(..))
 import           Network.Wai (Application)
 import           Servant (enter, (:~>)(Nat), serve, Handler)
 
-import Lib (server, Routes)
+import Application (server, Routes)
 
 import Poll.Algebra
 import Poll.Models

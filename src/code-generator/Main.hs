@@ -6,13 +6,12 @@ module Main where
 
 import           Data.Proxy  (Proxy (Proxy))
 import qualified Data.Text as Text
-import           Data.Text (Text)
 import           Elm         (Spec (Spec), specsToDir, toElmTypeSource,
                               toElmDecoderSource, toElmEncoderSource)
 import           Servant.Elm (ElmOptions (..), defElmImports, defElmOptions,
                               generateElmForAPIWith, UrlPrefix (Dynamic))
 
-import           Lib         (API)
+import           Application (API)
 import           Poll.Models (Addition, Poll, PollChoice, CreatePoll)
 
 

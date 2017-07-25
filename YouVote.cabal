@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src/server
-  exposed-modules:     Lib
+  exposed-modules:     Application
                      , Database.Model
                      , Database.Poll
                      , Poll.Models
