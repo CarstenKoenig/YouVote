@@ -13,7 +13,7 @@ module Lib
     ) where
 
 import           Control.Monad.Error.Class (MonadError)
-import           Data.Int (Int64)
+import qualified Data.Map.Strict as Map
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Lucid as Html
@@ -42,8 +42,8 @@ type Pages =
 type API = "api" :>
   ("add" :> ReqBody '[JSON] Addition :> Post '[JSON] Int
   :<|> "poll" :> "list" :> Get '[JSON] [Poll]
-  :<|> "poll" :> Capture "pollId" Int64 :> Get '[JSON] Poll
-  :<|> "poll" :> Capture "pollId" Int64 :> "vote" :> Capture "choiceId" Int64 :> Post '[JSON] Poll
+  :<|> "poll" :> Capture "pollId" PollId :> Get '[JSON] Poll
+  :<|> "poll" :> Capture "pollId" PollId :> "vote" :> Capture "choiceId" ChoiceId :> Post '[JSON] Poll
   :<|> "poll" :> "create" :> ReqBody '[JSON] CreatePoll :> Put '[JSON] Poll)
 
 
@@ -102,16 +102,20 @@ apiServer =
 
 examplePolls :: [Poll]
 examplePolls =
-  [ Poll 1 "What's your favorite programming language?"
-    [ PollChoice 1 "Haskell" (Just 21)
-    , PollChoice 2 "Elm" (Just 13) 
-    , PollChoice 3 "JavaScript" (Just 5)
-    ]
+  [ Poll 1 "What's your favorite programming language?" 
+    (toChoiceMap
+      [ PollChoice 1 "Haskell" (Just 21)
+      , PollChoice 2 "Elm" (Just 13) 
+      , PollChoice 3 "JavaScript" (Just 5)
+      ])
   , Poll 2 "What's your favorite metal band?"
-    [ PollChoice 4 "Metal what?" Nothing
-    , PollChoice 5 "Justin Bieber" Nothing
-    ]
+    (toChoiceMap
+     [ PollChoice 4 "Metal what?" Nothing
+     , PollChoice 5 "Justin Bieber" Nothing
+     ])
   ]
+  where toChoiceMap chs =
+          Map.fromList (map (\c -> (choiceId c, c)) chs)
 
 ----------------------------------------------------------------------
 -- Html Pages

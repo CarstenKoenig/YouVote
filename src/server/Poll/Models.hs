@@ -6,6 +6,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Poll.Models
     ( Addition (..)
+    , PollId, ChoiceId
     , Poll (..)
     , PollChoice (..)
     , CreatePoll (..)
@@ -14,7 +15,9 @@ module Poll.Models
 import           Data.Aeson
 import           Data.Aeson.TH
 import           Data.Int (Int64)
+import           Data.Map.Strict (Map)
 import           Data.Text (Text)
+import           Elm (ElmPrimitive(EInt), HasElmComparable(..))
 import           GHC.Generics
 import           Servant.Elm (ElmType)
 
@@ -26,16 +29,18 @@ data Addition = Addition
 
 $(deriveJSON defaultOptions ''Addition)
 
+type PollId = Int64
+type ChoiceId = Int64
 
 data Poll = Poll
-  { pollId   :: Int64
+  { pollId   :: PollId
   , question :: Text
-  , choices  :: [PollChoice]
+  , choices  :: Map ChoiceId PollChoice
   } deriving (Eq, Show, Generic)
 
 
 data PollChoice = PollChoice
-  { choiceId :: Int64
+  { choiceId :: ChoiceId
   , answer :: Text
   , votes  :: Maybe Int
   } deriving (Eq, Show, Generic)
@@ -53,6 +58,11 @@ $(deriveJSON defaultOptions ''Poll)
 $(deriveJSON defaultOptions ''CreatePoll)
 
 
+
+instance HasElmComparable Int64 where
+  toElmComparable _ = EInt
+
+  
 instance ElmType Addition
 instance ElmType PollChoice
 instance ElmType Poll

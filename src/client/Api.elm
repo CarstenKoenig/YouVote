@@ -5,7 +5,7 @@ import Json.Decode.Pipeline exposing (..)
 import Json.Encode
 import Http
 import String
-
+import Dict exposing (Dict)
 
 type alias Addition =
     { operandA : Int
@@ -41,7 +41,7 @@ decodePollChoice =
 type alias Poll =
     { pollId : Int
     , question : String
-    , choices : List (PollChoice)
+    , choices : Dict (Int) (PollChoice)
     }
 
 decodePoll : Decoder Poll
@@ -49,7 +49,7 @@ decodePoll =
     decode Poll
         |> required "pollId" int
         |> required "question" string
-        |> required "choices" (list decodePollChoice)
+        |> required "choices" (map Dict.fromList (list (map2 (,) (index 0 int) (index 1 decodePollChoice))))
 
 type alias CreatePoll =
     { newQuestion : String

@@ -5,6 +5,8 @@
 module Main where
 
 import           Data.Proxy  (Proxy (Proxy))
+import qualified Data.Text as Text
+import           Data.Text (Text)
 import           Elm         (Spec (Spec), specsToDir, toElmTypeSource,
                               toElmDecoderSource, toElmEncoderSource)
 import           Servant.Elm (ElmOptions (..), defElmImports, defElmOptions,
@@ -23,7 +25,7 @@ elmOpts =
 specs :: [Spec]
 specs =
   [ Spec ["Api"]
-    (defElmImports
+    ( defElmImports `Text.append` "import Dict exposing (Dict)"
       : toElmTypeSource    (Proxy :: Proxy Addition)
       : toElmDecoderSource (Proxy :: Proxy Addition)
       : toElmEncoderSource (Proxy :: Proxy Addition)
