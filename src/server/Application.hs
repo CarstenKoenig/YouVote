@@ -31,6 +31,7 @@ import           Network.Wai.Middleware.RequestLogger (logStdoutDev)
 import           Servant
 import           Servant.HTML.Lucid(HTML)
 
+import qualified Poll.Algebra as Alg
 import           Poll.Models
 import           Database.Poll
 import qualified Database.Model as Db
@@ -82,7 +83,7 @@ app pool = serve (Proxy :: Proxy Routes) (server (toDbHandler pool))
 
 
 -- | the Servant-Server of the Application
-server :: (Monad m, MonadError ServantErr m) => (m :~> Handler) -> Server Routes
+server :: (Alg.InterpretRepository m, Monad m, MonadError ServantErr m) => (m :~> Handler) -> Server Routes
 server embedd =
   serveDirectory "static"
   :<|> enter embedd pagesServer
@@ -94,7 +95,7 @@ server embedd =
 
 -- apiServer can `throwError` so we need the MonadError instance
 
-apiServer :: (Monad m, MonadError ServantErr m) => ServerT API m
+apiServer :: (Alg.InterpretRepository m, Monad m, MonadError ServantErr m) => ServerT API m
 apiServer =
   addHandler
   :<|> listPollsHandler
@@ -106,14 +107,15 @@ apiServer =
       pure $ operandA add + operandB add
     listPollsHandler =
       pure examplePolls
-    getPollHandler pollId =
-      case lookup (fromIntegral pollId) (zip [1..] examplePolls) of
-        Nothing -> throwError notFound
+    getPollHandler pollId = do
+      found <- Alg.interpret (Alg.loadPoll pollId)
+      case found of
         Just poll -> pure poll
+        Nothing -> throwError notFound
     votePollHandler pollId choiceId =
       undefined
-    createPollHandler newPoll =
-      undefined
+    createPollHandler newpoll =
+      Alg.interpret (Alg.newPoll newpoll)
     notFound =
       err404 { errBody = "poll not found" }
 

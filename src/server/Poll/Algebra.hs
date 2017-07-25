@@ -3,6 +3,7 @@ module Poll.Algebra
   ( Repository
   , RepositoryF (..)
   , InterpretRepository (..)
+  , loadPoll, newPoll, voteFor
   ) where
 
 

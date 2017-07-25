@@ -28,7 +28,7 @@ import qualified Database.Model as Db
 
 import           Servant
 
-import           Poll.Algebra
+import qualified Poll.Algebra as Alg
 import           Poll.Models
 
 
@@ -42,7 +42,7 @@ toDbHandler pool = Nat (toHandler' pool)
 
 
 instance (MonadBaseControl IO m, MonadIO m) =>
-         InterpretRepository (ReaderT ConnectionPool m) where
+         Alg.InterpretRepository (ReaderT ConnectionPool m) where
   interpret rep = do
     pool <- Reader.ask
     let query = Free.iterM interpretSql rep
@@ -50,11 +50,11 @@ instance (MonadBaseControl IO m, MonadIO m) =>
 
 
 interpretSql :: MonadIO m =>
-                RepositoryF (SqlPersistT m a) ->
+                Alg.RepositoryF (SqlPersistT m a) ->
                 SqlPersistT m a
-interpretSql (LoadPoll pollId contWith) =
+interpretSql (Alg.LoadPoll pollId contWith) =
   loadPoll pollId >>= contWith
-interpretSql (NewPoll poll contWith) = do
+interpretSql (Alg.NewPoll poll contWith) = do
   pollKey <- Sql.insert $ Db.Poll (newQuestion poll)
   mapM_ (insertChoice pollKey) (newChoices poll)
   p <- loadPoll (Sql.fromSqlKey pollKey)
@@ -62,7 +62,7 @@ interpretSql (NewPoll poll contWith) = do
   where
     insertChoice key answer =
       Sql.insert $ Db.Choice answer key
-interpretSql (VoteFor ip _ choiceId cont) =
+interpretSql (Alg.VoteFor ip _ choiceId cont) =
   Sql.insert (Db.Vote (Sql.toSqlKey choiceId) ip) >> cont
 
 
