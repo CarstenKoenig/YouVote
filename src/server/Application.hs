@@ -12,10 +12,17 @@ module Application
     , API
     ) where
 
+import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Error.Class (MonadError)
+import           Control.Monad.Logger (runStdoutLoggingT)
+
 import qualified Data.Map.Strict as Map
 import           Data.Text (Text)
 import qualified Data.Text as Text
+
+import           Database.Persist.Sql (runMigration, runSqlPool)
+import           Database.Persist.Sqlite (withSqlitePool)
+
 import qualified Lucid as Html
 import           Lucid (Html)
 import           Network.Wai
@@ -25,6 +32,8 @@ import           Servant
 import           Servant.HTML.Lucid(HTML)
 
 import           Poll.Models
+import           Database.Poll
+import qualified Database.Model as Db
 
 ----------------------------------------------------------------------
 -- Type-Level part of the Servant app: 
@@ -51,16 +60,25 @@ type API = "api" :>
 -- application section
 
 
+localDb :: Text
+localDb = "./polls.db"
+
+
 -- | run the Servant application on localhost:8080
 startApp :: IO ()
 startApp = do
   putStrLn "running application on http://localhost:8080"
-  run 8080 $ logStdoutDev app
+  -- use a sqlite-pool on database file in localDb (with logging to stdout)
+  runStdoutLoggingT $ withSqlitePool localDb 5 $ \ pool -> do
+    -- run migrations if any
+    runSqlPool (runMigration Db.migrateAll) pool
+    -- then run the WAI application logging to stdout with a DbHandler using the pool
+    liftIO $ run 8080 $ logStdoutDev $ app pool
 
 
 -- | the Servant-Application as a WAI Application
-app :: Application
-app = serve (Proxy :: Proxy Routes) (server (Nat id))
+app :: ConnectionPool -> Application
+app pool = serve (Proxy :: Proxy Routes) (server (toDbHandler pool))
 
 
 -- | the Servant-Server of the Application

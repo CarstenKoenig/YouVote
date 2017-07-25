@@ -13,3 +13,6 @@ src/client/api.elm
 TAGS
 .#*
 .dir-locals.el
+
+## ignore local dbs
+*.db
