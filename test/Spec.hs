@@ -82,7 +82,7 @@ instance Monad m => InterpretRepository (StateT PollStoreState m) where
       added = Poll nextPId (newQuestion poll) choices
     State.modify (\s -> s { polls = Map.insert nextPId added (polls s) })
     contWith added
-  iterRep (VoteFor pollId choiceId cont) = do
+  iterRep (VoteFor _ pollId choiceId cont) = do
     choice <- getChoice pollId choiceId
     cont
         
