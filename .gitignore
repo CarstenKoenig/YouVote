@@ -12,3 +12,4 @@ src/client/api.elm
 ## emacs
 TAGS
 .#*
+.dir-locals.el

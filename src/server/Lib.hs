@@ -6,10 +6,13 @@
 module Lib
     ( startApp
     , app
+    , server
     , Addition (..)
+    , Routes
     , API
     ) where
 
+import           Control.Monad.Error.Class (MonadError)
 import           Data.Int (Int64)
 import           Data.Text (Text)
 import qualified Data.Text as Text
@@ -57,21 +60,23 @@ startApp = do
 
 -- | the Servant-Application as a WAI Application
 app :: Application
-app = serve (Proxy :: Proxy Routes) server
+app = serve (Proxy :: Proxy Routes) (server (Nat id))
 
 
 -- | the Servant-Server of the Application
-server :: Server Routes
-server =
+server :: (Monad m, MonadError ServantErr m) => (m :~> Handler) -> Server Routes
+server embedd =
   serveDirectory "static"
-  :<|> pagesServer
-  :<|> apiServer
+  :<|> enter embedd pagesServer
+  :<|> enter embedd apiServer
 
 
 ----------------------------------------------------------------------
 -- Rest API section
 
-apiServer :: Server API
+-- apiServer can `throwError` so we need the MonadError instance
+
+apiServer :: (Monad m, MonadError ServantErr m) => ServerT API m
 apiServer =
   addHandler
   :<|> listPollsHandler
@@ -112,7 +117,9 @@ examplePolls =
 -- Html Pages
 
 -- | Servant-Server just returns the Home-page
-pagesServer :: Server Pages
+-- it actually just wraps a static html content so
+-- it only needs a general monad
+pagesServer :: Monad m => ServerT Pages m
 pagesServer = return homePage
 
 
