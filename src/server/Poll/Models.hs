@@ -5,8 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 module Poll.Models
-    ( Addition (..)
-    , PollId, ChoiceId
+    ( PollId, ChoiceId
     , Poll (..)
     , PollChoice (..)
     , CreatePoll (..)
@@ -21,13 +20,6 @@ import           Elm (ElmPrimitive(EInt), HasElmComparable(..))
 import           GHC.Generics
 import           Servant.Elm (ElmType)
 
-
-data Addition = Addition
-  { operandA      :: Int
-  , operandB      :: Int
-  } deriving (Eq, Show, Generic)
-
-$(deriveJSON defaultOptions ''Addition)
 
 type PollId = Int64
 type ChoiceId = Int64
@@ -63,7 +55,6 @@ instance HasElmComparable Int64 where
   toElmComparable _ = EInt
 
   
-instance ElmType Addition
 instance ElmType PollChoice
 instance ElmType Poll
 instance ElmType CreatePoll

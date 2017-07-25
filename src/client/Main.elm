@@ -18,7 +18,6 @@ type Msg
     = InputA String
     | InputB String
     | Execute
-    | GotResult (Result Http.Error Int)
 
 
 main : Program Never Model Msg
@@ -48,24 +47,12 @@ update msg model =
                 intB =
                     String.toInt model.b
             in
-                case Result.map2 Addition intA intB of
+                case Result.map2 (+) intA intB of
                     Err _ ->
                         model ! []
 
                     Ok add ->
-                        let
-                            request =
-                                postApiAdd "http://localhost:8080" add
-                        in
-                            model ! [ Http.send GotResult request ]
-
-        GotResult result ->
-            case result of
-                Err _ ->
-                    model ! []
-
-                Ok res ->
-                    { model | result = res } ! []
+                        { model | result = add } ! []
 
 
 view : Model -> Html Msg

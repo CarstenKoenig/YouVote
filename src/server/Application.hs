@@ -7,7 +7,6 @@ module Application
     ( startApp
     , app
     , server
-    , Addition (..)
     , Routes
     , API
     ) where
@@ -50,8 +49,7 @@ type Pages =
 
 
 type API = "api" :>
-  ("add" :> ReqBody '[JSON] Addition :> Post '[JSON] Int
-  :<|> "poll" :> "list" :> Get '[JSON] [Poll]
+  ("poll" :> "list" :> Get '[JSON] [Poll]
   :<|> "poll" :> Capture "pollId" PollId :> Get '[JSON] Poll
   :<|> "poll" :> Capture "pollId" PollId :> "vote" :> Capture "choiceId" ChoiceId :> Post '[JSON] Poll
   :<|> "poll" :> "create" :> ReqBody '[JSON] CreatePoll :> Put '[JSON] Poll)
@@ -97,14 +95,11 @@ server embedd =
 
 apiServer :: (Alg.InterpretRepository m, Monad m, MonadError ServantErr m) => ServerT API m
 apiServer =
-  addHandler
-  :<|> listPollsHandler
+  listPollsHandler
   :<|> getPollHandler
   :<|> votePollHandler
   :<|> createPollHandler
   where
-    addHandler add =
-      pure $ operandA add + operandB add
     listPollsHandler =
       pure examplePolls
     getPollHandler pollId = do

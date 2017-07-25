@@ -7,24 +7,6 @@ import Http
 import String
 import Dict exposing (Dict)
 
-type alias Addition =
-    { operandA : Int
-    , operandB : Int
-    }
-
-decodeAddition : Decoder Addition
-decodeAddition =
-    decode Addition
-        |> required "operandA" int
-        |> required "operandB" int
-
-encodeAddition : Addition -> Json.Encode.Value
-encodeAddition x =
-    Json.Encode.object
-        [ ( "operandA", Json.Encode.int x.operandA )
-        , ( "operandB", Json.Encode.int x.operandB )
-        ]
-
 type alias PollChoice =
     { choiceId : Int
     , answer : String
@@ -62,29 +44,6 @@ encodeCreatePoll x =
         [ ( "newQuestion", Json.Encode.string x.newQuestion )
         , ( "newChoices", (Json.Encode.list << List.map Json.Encode.string) x.newChoices )
         ]
-
-postApiAdd : String -> Addition -> Http.Request (Int)
-postApiAdd urlBase body =
-    Http.request
-        { method =
-            "POST"
-        , headers =
-            []
-        , url =
-            String.join "/"
-                [ urlBase
-                , "api"
-                , "add"
-                ]
-        , body =
-            Http.jsonBody (encodeAddition body)
-        , expect =
-            Http.expectJson int
-        , timeout =
-            Nothing
-        , withCredentials =
-            False
-        }
 
 getApiPollList : String -> Http.Request (List (Poll))
 getApiPollList urlBase =
