@@ -10,6 +10,14 @@ if you have a **bash** shell available you can just use the
 	
 script to get started - if not just follow these steps:	
 
+### make
+
+alternatively there is an `Makefile` included so
+
+    make server-start
+	
+should compile everything and then fire up the server	
+
 ### building the server app
 the first step is to get the Haskell appliction compiled:
 
