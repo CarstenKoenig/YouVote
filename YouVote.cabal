@@ -26,6 +26,7 @@ library
                      , elm-export
                      , free
                      , http-api-data
+                     , monad-control
                      , monad-logger
                      , mtl
                      , network-uri

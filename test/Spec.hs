@@ -6,6 +6,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
+import qualified Control.Monad.Free as Free
 import qualified Control.Monad.State as State
 import           Control.Monad.State (StateT)
 
@@ -68,23 +69,25 @@ emptyStore = PollStoreState Map.empty
 
 
 instance Monad m => InterpretRepository (StateT PollStoreState m) where
-  iterRep (LoadPoll pollId contWith) = do
-    found <- State.gets (Map.lookup pollId . polls)
-    contWith found
-  iterRep (NewPoll poll contWith) = do
-    nextPId <- nextPollId
-    nextCId <- nextChoiceId
-    let
-      choices = Map.fromList $ zipWith
-        (\cT cId -> (cId, PollChoice cId cT Nothing))
-        (newChoices poll)
-        [nextCId..]
-      added = Poll nextPId (newQuestion poll) choices
-    State.modify (\s -> s { polls = Map.insert nextPId added (polls s) })
-    contWith added
-  iterRep (VoteFor _ pollId choiceId cont) = do
-    choice <- getChoice pollId choiceId
-    cont
+  interpret = Free.iterM iterRep
+    where
+    iterRep (LoadPoll pollId contWith) = do
+      found <- State.gets (Map.lookup pollId . polls)
+      contWith found
+    iterRep (NewPoll poll contWith) = do
+      nextPId <- nextPollId
+      nextCId <- nextChoiceId
+      let
+        choices = Map.fromList $ zipWith
+          (\cT cId -> (cId, PollChoice cId cT Nothing))
+          (newChoices poll)
+          [nextCId..]
+        added = Poll nextPId (newQuestion poll) choices
+      State.modify (\s -> s { polls = Map.insert nextPId added (polls s) })
+      contWith added
+    iterRep (VoteFor _ pollId choiceId cont) = do
+      choice <- getChoice pollId choiceId
+      cont
         
 
 getChoice :: Monad m => PollId -> ChoiceId -> PollStore m (Maybe PollChoice)

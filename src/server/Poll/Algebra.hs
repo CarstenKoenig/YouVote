@@ -3,7 +3,6 @@ module Poll.Algebra
   ( Repository
   , RepositoryF (..)
   , InterpretRepository (..)
-  , interpret
   ) where
 
 
@@ -14,11 +13,7 @@ import           Poll.Models
 
 
 class InterpretRepository m where
-  iterRep :: RepositoryF (m a) -> m a
-
-
-interpret :: (InterpretRepository m, Monad m) => Repository a -> m a
-interpret = Free.iterM iterRep 
+  interpret :: Repository a -> m a
 
 
 loadPoll :: PollId -> Repository (Maybe Poll)
