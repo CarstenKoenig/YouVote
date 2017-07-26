@@ -16,6 +16,7 @@ import           Control.Monad.Error.Class (MonadError)
 import           Control.Monad.Logger (runStdoutLoggingT)
 
 import qualified Data.Map.Strict as Map
+import           Data.List (intercalate)
 import           Data.Text (Text)
 import qualified Data.Text as Text
 
@@ -24,7 +25,7 @@ import           Database.Persist.Sqlite (withSqlitePool)
 
 import qualified Lucid as Html
 import           Lucid (Html)
-import           Network.Socket (SockAddr(..))
+import           Network.Socket (SockAddr(..), hostAddressToTuple, hostAddress6ToTuple)
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.RequestLogger (logStdoutDev)
@@ -105,8 +106,8 @@ apiServer =
   where
     listPollsHandler =
       pure examplePolls
-    getPollHandler pollId = do
-      found <- Alg.interpret (Alg.loadPoll pollId)
+    getPollHandler pId = do
+      found <- Alg.interpret (Alg.loadPoll pId)
       case found of
         Just poll -> pure poll
         Nothing -> throwError notFound
@@ -118,10 +119,6 @@ apiServer =
       Alg.interpret (Alg.newPoll newpoll)
     notFound =
       err404 { errBody = "poll not found" }
-    getAdrPart (SockAddrInet _ adr) = show adr
-    getAdrPart (SockAddrInet6 _ _ adr _) = show adr
-    getAdrPart (SockAddrUnix n) = n
-    getAdrPart (SockAddrCan nr) = show nr
 
 
 examplePolls :: [Poll]
@@ -171,3 +168,26 @@ elmApp = do
       , "var app = Elm.Main.embed(node);"
       ]
   
+
+----------------------------------------------------------------------
+-- helpers
+
+
+-- | renders the Address part of a SockAddr into a string
+-- mainly used to get IP Adresses in the 192.168.1.10 form
+-- this function is used to give an voter-Identifier from
+-- the remote host to check if the user already voted on a
+-- poll
+getAdrPart :: SockAddr -> String
+getAdrPart (SockAddrInet _ adr) =
+  formatAddr (hostAddressToTuple adr)
+  where
+    formatAddr (a,b,c,d) =
+      intercalate "." . map show $ [a,b,c,d]
+getAdrPart (SockAddrInet6 _ _ adr _) =
+  formatAddr6 (hostAddress6ToTuple adr)
+  where
+    formatAddr6 (a,b,c,d,e,f,g,h) =
+      intercalate "." . map show $ [a,b,c,d,e,f,g,h]
+getAdrPart (SockAddrUnix n) = n
+getAdrPart (SockAddrCan nr) = show nr
