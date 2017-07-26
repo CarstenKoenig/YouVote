@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE TypeOperators   #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -11,9 +12,11 @@ module Application
     , API
     ) where
 
+import           Control.Exception.Lifted (SomeException, handle)
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Error.Class (MonadError)
 import           Control.Monad.Logger (runStdoutLoggingT)
+import           Control.Monad.Trans.Control (MonadBaseControl)
 
 import qualified Data.Map.Strict as Map
 import           Data.List (intercalate)
@@ -85,7 +88,8 @@ app pool = serve (Proxy :: Proxy Routes) (server (toDbHandler pool))
 
 
 -- | the Servant-Server of the Application
-server :: (Alg.InterpretRepository m, Monad m, MonadError ServantErr m) => (m :~> Handler) -> Server Routes
+server :: (Alg.InterpretRepository m, MonadBaseControl IO m
+          , Monad m, MonadError ServantErr m) => (m :~> Handler) -> Server Routes
 server embedd =
   serveDirectory "static"
   :<|> enter embedd pagesServer
@@ -97,46 +101,49 @@ server embedd =
 
 -- apiServer can `throwError` so we need the MonadError instance
 
-apiServer :: (Alg.InterpretRepository m, Monad m, MonadError ServantErr m) => ServerT API m
+apiServer :: ( Alg.InterpretRepository m, MonadBaseControl IO m
+             , Monad m, MonadError ServantErr m) => ServerT API m
 apiServer =
   listPollsHandler
   :<|> getPollHandler
   :<|> votePollHandler
   :<|> createPollHandler
+
+
+listPollsHandler :: (Alg.InterpretRepository m) => m [Poll]
+listPollsHandler =
+  Alg.interpret (Alg.recentPolls 5)
+
+
+getPollHandler :: (MonadError ServantErr m, Alg.InterpretRepository m)
+               => PollId -> m Poll
+getPollHandler pId = do
+  found <- Alg.interpret (Alg.loadPoll pId)
+  case found of
+    Just poll -> pure poll
+    Nothing -> throwError notFound
   where
-    listPollsHandler =
-      pure examplePolls
-    getPollHandler pId = do
-      found <- Alg.interpret (Alg.loadPoll pId)
-      case found of
-        Just poll -> pure poll
-        Nothing -> throwError notFound
-    votePollHandler pId cId remoteAdr =
-      Alg.interpret $
-        Alg.voteFor (getAdrPart remoteAdr) pId cId
-        >> Alg.loadPoll pId
-    createPollHandler newpoll =
-      Alg.interpret (Alg.newPoll newpoll)
     notFound =
       err404 { errBody = "poll not found" }
 
 
-examplePolls :: [Poll]
-examplePolls =
-  [ Poll 1 "What's your favorite programming language?" 
-    (toChoiceMap
-      [ PollChoice 1 "Haskell" (Just 21)
-      , PollChoice 2 "Elm" (Just 13) 
-      , PollChoice 3 "JavaScript" (Just 5)
-      ])
-  , Poll 2 "What's your favorite metal band?"
-    (toChoiceMap
-     [ PollChoice 4 "Metal what?" Nothing
-     , PollChoice 5 "Justin Bieber" Nothing
-     ])
-  ]
-  where toChoiceMap chs =
-          Map.fromList (map (\c -> (choiceId c, c)) chs)
+votePollHandler :: (Alg.InterpretRepository m
+                   , MonadError ServantErr m, MonadBaseControl IO m)
+                => PollId -> ChoiceId -> SockAddr -> m (Maybe Poll)
+votePollHandler pId cId remoteAdr =
+  handle (\ (_ :: SomeException) -> throwError badRequest) $ 
+  Alg.interpret $
+  Alg.voteFor (getAdrPart remoteAdr) pId cId
+  >> Alg.loadPoll pId
+  where
+    badRequest =
+      err400 { errBody = "vote already cast" }
+
+
+createPollHandler :: Alg.InterpretRepository m => CreatePoll -> m Poll
+createPollHandler newpoll =
+  Alg.interpret (Alg.newPoll newpoll)
+      
 
 ----------------------------------------------------------------------
 -- Html Pages

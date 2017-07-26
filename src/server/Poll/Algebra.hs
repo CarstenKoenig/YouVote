@@ -1,9 +1,10 @@
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 {-# LANGUAGE DeriveFunctor #-}
 module Poll.Algebra
   ( Repository
   , RepositoryF (..)
   , InterpretRepository (..)
-  , loadPoll, newPoll, voteFor
+  , recentPolls, loadPoll, newPoll, voteFor
   ) where
 
 
@@ -16,6 +17,10 @@ import           Poll.Models
 class InterpretRepository m where
   interpret :: Repository a -> m a
 
+
+recentPolls :: Int -> Repository [Poll]
+recentPolls count =
+  Free.liftF $ RecentPolls count id
 
 loadPoll :: PollId -> Repository (Maybe Poll)
 loadPoll pollId =
@@ -38,5 +43,6 @@ data RepositoryF a
   = LoadPoll PollId (Maybe Poll -> a)
   | NewPoll CreatePoll (Poll -> a)
   | VoteFor String PollId ChoiceId a
+  | RecentPolls Int ([Poll] -> a)
   deriving Functor
   

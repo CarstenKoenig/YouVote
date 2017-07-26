@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Database.Poll
   ( ConnectionPool
@@ -22,7 +23,7 @@ import           Data.Maybe (fromJust)
 
 import qualified Database.Persist as Sql
 import qualified Database.Persist.Sql as Sql
-import           Database.Persist.Sql ((==.), SqlPersistT, ConnectionPool)
+import           Database.Persist.Sql (Entity, (==.), SqlPersistT, ConnectionPool)
 
 import qualified Database.Model as Db
 
@@ -52,6 +53,8 @@ instance (MonadBaseControl IO m, MonadIO m) =>
 interpretSql :: MonadIO m =>
                 Alg.RepositoryF (SqlPersistT m a) ->
                 SqlPersistT m a
+interpretSql (Alg.RecentPolls cnt contWith) =
+  listPolls cnt >>= contWith
 interpretSql (Alg.LoadPoll pId contWith) =
   loadPoll pId >>= contWith
 interpretSql (Alg.NewPoll poll contWith) = do
@@ -65,6 +68,20 @@ interpretSql (Alg.NewPoll poll contWith) = do
 interpretSql (Alg.VoteFor ip pId cId cont) =
   Sql.insert (Db.Vote (Sql.toSqlKey pId) (Sql.toSqlKey cId) ip) >> cont
 
+
+listPolls :: forall m . MonadIO m => Int -> SqlPersistT m [Poll]
+listPolls cnt = do
+  entities <- Sql.selectList
+             [ ]
+             [ Sql.Desc Db.PollId, Sql.LimitTo cnt ]
+  mapM createPoll entities
+  where
+    createPoll p = do
+      let pId = Sql.fromSqlKey (Sql.entityKey p)
+      let q = Db.pollQuestion (Sql.entityVal p)
+      cs <- loadChoices pId
+      return $ Poll pId q cs
+  
 
 loadPoll :: MonadIO m => PollId -> SqlPersistT m (Maybe Poll)
 loadPoll pId = do

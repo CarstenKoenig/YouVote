@@ -26,6 +26,7 @@ library
                      , elm-export
                      , free
                      , http-api-data
+                     , lifted-base
                      , monad-control
                      , monad-logger
                      , mtl
@@ -47,6 +48,7 @@ library
                      , wai-extra
                      , warp
   default-language:    Haskell2010
+  ghc-options:         -fno-warn-name-shadowing 
 
 executable YouVote
   hs-source-dirs:      app

@@ -71,6 +71,9 @@ emptyStore = PollStoreState Map.empty
 instance Monad m => InterpretRepository (StateT PollStoreState m) where
   interpret = Free.iterM iterRep
     where
+    iterRep (RecentPolls cnt contWith) = do
+      polls <- take cnt . reverse <$> State.gets (Map.elems . polls)
+      contWith polls
     iterRep (LoadPoll pollId contWith) = do
       found <- State.gets (Map.lookup pollId . polls)
       contWith found
