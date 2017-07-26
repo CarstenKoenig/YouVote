@@ -93,7 +93,7 @@ getApiPollByPollId urlBase capture_pollId =
             False
         }
 
-postApiPollByPollIdVoteByChoiceId : String -> Int -> Int -> Http.Request (Poll)
+postApiPollByPollIdVoteByChoiceId : String -> Int -> Int -> Http.Request (Maybe (Poll))
 postApiPollByPollIdVoteByChoiceId urlBase capture_pollId capture_choiceId =
     Http.request
         { method =
@@ -112,7 +112,7 @@ postApiPollByPollIdVoteByChoiceId urlBase capture_pollId capture_choiceId =
         , body =
             Http.emptyBody
         , expect =
-            Http.expectJson decodePoll
+            Http.expectJson (maybe decodePoll)
         , timeout =
             Nothing
         , withCredentials =

@@ -29,6 +29,7 @@ library
                      , monad-control
                      , monad-logger
                      , mtl
+                     , network
                      , network-uri
                      , persistent
                      , persistent-sqlite
@@ -50,7 +51,7 @@ library
 executable YouVote
   hs-source-dirs:      app
   main-is:             Main.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -fno-warn-name-shadowing -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , YouVote
   default-language:    Haskell2010

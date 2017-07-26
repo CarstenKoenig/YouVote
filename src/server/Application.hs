@@ -24,6 +24,7 @@ import           Database.Persist.Sqlite (withSqlitePool)
 
 import qualified Lucid as Html
 import           Lucid (Html)
+import           Network.Socket (SockAddr(..))
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.RequestLogger (logStdoutDev)
@@ -51,7 +52,9 @@ type Pages =
 type API = "api" :>
   ("poll" :> "list" :> Get '[JSON] [Poll]
   :<|> "poll" :> Capture "pollId" PollId :> Get '[JSON] Poll
-  :<|> "poll" :> Capture "pollId" PollId :> "vote" :> Capture "choiceId" ChoiceId :> Post '[JSON] Poll
+  :<|> "poll" :> Capture "pollId" PollId
+              :> "vote" :> Capture "choiceId" ChoiceId
+              :> RemoteHost :> Post '[JSON] (Maybe Poll)
   :<|> "poll" :> "create" :> ReqBody '[JSON] CreatePoll :> Put '[JSON] Poll)
 
 
@@ -107,12 +110,18 @@ apiServer =
       case found of
         Just poll -> pure poll
         Nothing -> throwError notFound
-    votePollHandler pollId choiceId =
-      undefined
+    votePollHandler pId cId remoteAdr =
+      Alg.interpret $
+        Alg.voteFor (getAdrPart remoteAdr) pId cId
+        >> Alg.loadPoll pId
     createPollHandler newpoll =
       Alg.interpret (Alg.newPoll newpoll)
     notFound =
       err404 { errBody = "poll not found" }
+    getAdrPart (SockAddrInet _ adr) = show adr
+    getAdrPart (SockAddrInet6 _ _ adr _) = show adr
+    getAdrPart (SockAddrUnix n) = n
+    getAdrPart (SockAddrCan nr) = show nr
 
 
 examplePolls :: [Poll]

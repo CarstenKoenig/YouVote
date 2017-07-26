@@ -23,8 +23,10 @@ Choice json
     poll PollId
     deriving Show
 Vote json
+    poll PollId
     choice ChoiceId
     voterIP String
+    UniquePollVote poll voterIP
     deriving Show
 |]
 

@@ -38,7 +38,7 @@ toDbHandler :: ConnectionPool -> ReaderT ConnectionPool Handler :~> Handler
 toDbHandler pool = Nat (toHandler' pool)
   where
     toHandler' :: forall a. ConnectionPool -> ReaderT ConnectionPool Handler a -> Handler a
-    toHandler' pool th = Reader.runReaderT th pool
+    toHandler' p th = Reader.runReaderT th p
 
 
 instance (MonadBaseControl IO m, MonadIO m) =>
@@ -52,44 +52,44 @@ instance (MonadBaseControl IO m, MonadIO m) =>
 interpretSql :: MonadIO m =>
                 Alg.RepositoryF (SqlPersistT m a) ->
                 SqlPersistT m a
-interpretSql (Alg.LoadPoll pollId contWith) =
-  loadPoll pollId >>= contWith
+interpretSql (Alg.LoadPoll pId contWith) =
+  loadPoll pId >>= contWith
 interpretSql (Alg.NewPoll poll contWith) = do
   pollKey <- Sql.insert $ Db.Poll (newQuestion poll)
   mapM_ (insertChoice pollKey) (newChoices poll)
   p <- loadPoll (Sql.fromSqlKey pollKey)
   contWith (fromJust p)
   where
-    insertChoice key answer =
-      Sql.insert $ Db.Choice answer key
-interpretSql (Alg.VoteFor ip _ choiceId cont) =
-  Sql.insert (Db.Vote (Sql.toSqlKey choiceId) ip) >> cont
+    insertChoice key ans =
+      Sql.insert $ Db.Choice ans key
+interpretSql (Alg.VoteFor ip pId cId cont) =
+  Sql.insert (Db.Vote (Sql.toSqlKey pId) (Sql.toSqlKey cId) ip) >> cont
 
 
 loadPoll :: MonadIO m => PollId -> SqlPersistT m (Maybe Poll)
-loadPoll pollId = do
-  record <- Sql.get (Sql.toSqlKey pollId)
+loadPoll pId = do
+  record <- Sql.get (Sql.toSqlKey pId)
   case record of
     Nothing -> return Nothing
     Just pr -> do
-      let question = Db.pollQuestion pr
-      cs <- loadChoices pollId
-      return . Just $ Poll pollId question cs
+      let q = Db.pollQuestion pr
+      cs <- loadChoices pId
+      return . Just $ Poll pId q cs
 
 
 loadChoices :: MonadIO m => PollId -> SqlPersistT m (Map ChoiceId PollChoice)
-loadChoices pollId = do
+loadChoices pId = do
   entities <- Sql.selectList
-             [ Db.ChoicePoll ==. Sql.toSqlKey pollId ]
+             [ Db.ChoicePoll ==. Sql.toSqlKey pId ]
              [ Sql.Asc Db.ChoiceId ]
   Map.fromList <$> mapM createChoice entities
   
   where
     createChoice c = do
       nrVotes <- countVotes (Sql.entityKey c)
-      let answer = Db.choiceAnswer (Sql.entityVal c)
-      let id = Sql.fromSqlKey (Sql.entityKey c)
-      return (id, PollChoice id answer (Just nrVotes))
+      let ans = Db.choiceAnswer (Sql.entityVal c)
+      let cId = Sql.fromSqlKey (Sql.entityKey c)
+      return (cId, PollChoice cId ans (Just nrVotes))
 
 
 countVotes :: MonadIO m => Db.Key Db.Choice -> SqlPersistT m Int
