@@ -156,11 +156,33 @@ pagesServer = return homePage
 
 
 homePage :: Html ()
-homePage =
-  Html.html_ $
-  Html.body_ $ do
-     Html.h1_ [] (Html.toHtml ("Hello Servant" :: Text))
-     elmApp
+homePage = do
+  Html.doctype_ 
+  Html.html_ [ Html.lang_ "en" ] $ do
+    Html.head_ $ do
+      Html.link_ [ Html.rel_ "shortcut icon", Html.href_ "static/favicon.ico" ]
+      Html.meta_ [ Html.charset_ "utf-8" ]
+      Html.meta_ [ Html.name_ "description"
+                 , Html.content_ "quick voting app demo" ]
+      Html.meta_ [ Html.name_ "author"
+                 , Html.content_ "Carsten König" ]
+      Html.meta_ [ Html.httpEquiv_ "X-UA-Compatible"
+                 , Html.content_ "IE=edge" ]
+      Html.meta_ [ Html.name_ "viewport"
+                 , Html.content_ "width=device-width, initial-scale=1" ]
+        
+      Html.title_ "YouVote"
+      
+      -- Bootstrap
+      Html.link_ [ Html.href_ "static/css/bootstrap.min.css"
+                 , Html.rel_ "stylesheet" ]
+      -- Custom css
+      Html.link_ [ Html.href_ "static/css/site.css"
+                 , Html.rel_ "stylesheet" ]
+
+    Html.body_ $ do
+      Html.h1_ [] (Html.toHtml ("Hello Servant" :: Text))
+      elmApp
 
 elmApp :: Html ()
 elmApp = do

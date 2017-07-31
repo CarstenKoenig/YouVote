@@ -138,7 +138,7 @@ form model =
         [ Attr.class "form-horizontal"
         , Ev.onSubmit NoOp
         ]
-        [ div [ Attr.class "form-group" ]
+        ([ div [ Attr.class "form-group" ]
             [ label
                 [ Attr.for "inputQuesstion"
                 , Attr.class "col-sm-2 control-label"
@@ -155,44 +155,46 @@ form model =
                     []
                 ]
             ]
-        , div [ Attr.class "form-group" ]
+         , div [ Attr.class "form-group" ]
             [ label [ Attr.class "col-sm-2 control-label" ]
                 [ text "Choices" ]
-            , div [ Attr.class "col-sm-10" ]
-                [ viewChoices model ]
+            , div [ Attr.class "col-sm-10" ] []
             ]
-        , div [ Attr.class "form-group" ]
-            [ div [ Attr.class "col-sm-offset-2 col-sm-10" ]
-                [ button
-                    [ Attr.type_ "submit"
-                    , Attr.class "btn btn-default"
-                    , Attr.classList
-                        [ ( "enabled", validModel model ) ]
-                    , Ev.onClick Execute
+         ]
+            ++ viewChoices model
+            ++ [ div [ Attr.class "form-group" ]
+                    [ div [ Attr.class "col-sm-offset-2 col-sm-10" ]
+                        [ button
+                            [ Attr.type_ "submit"
+                            , Attr.class "btn btn-default"
+                            , Attr.disabled (not <| validModel model)
+                            , Ev.onClick Execute
+                            ]
+                            [ text "create" ]
+                        ]
                     ]
-                    [ text "create" ]
-                ]
-            ]
-        ]
-
-
-viewChoices : Model -> Html Msg
-viewChoices model =
-    Html.ul []
-        (Dict.toList model.choices
-            |> List.map (viewChoice model)
+               ]
         )
+
+
+viewChoices : Model -> List (Html Msg)
+viewChoices model =
+    Dict.toList model.choices
+        |> List.map (viewChoice model)
 
 
 viewChoice : Model -> ( Int, String ) -> Html Msg
 viewChoice model ( index, text ) =
-    Html.li []
-        [ input
-            [ Attr.type_ "text"
-            , Attr.class "form-control"
-            , Attr.placeholder "Choice.."
-            , Attr.value text
-            , Ev.onInput (EditChoice index)
+    div [ Attr.class "form-group" ]
+        [ label [ Attr.class "col-sm-2 control-label" ] []
+        , div [ Attr.class "col-sm-10" ]
+            [ input
+                [ Attr.type_ "text"
+                , Attr.class "form-control"
+                , Attr.placeholder "Choice.."
+                , Attr.value text
+                , Ev.onInput (EditChoice index)
+                ]
+                []
             ]
-            []
         ]
