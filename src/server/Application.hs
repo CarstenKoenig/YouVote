@@ -180,9 +180,9 @@ homePage = do
       Html.link_ [ Html.href_ "static/css/site.css"
                  , Html.rel_ "stylesheet" ]
 
-    Html.body_ $ do
-      Html.h1_ [] (Html.toHtml ("Hello Servant" :: Text))
-      elmApp
+    Html.body_ $
+      Html.div_ [ Html.class_ "container" ] elmApp
+
 
 elmApp :: Html ()
 elmApp = do

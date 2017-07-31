@@ -41,7 +41,12 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ h3 [] [ text "Hallo Elm" ]
+        [ div [ Attr.class "row" ]
+            [ div [ Attr.class "col-sm-2" ] []
+            , div [ Attr.class "col-sm-10" ]
+                [ h2 [] [ text "create a new poll" ]
+                ]
+            ]
         , NewPoll.view model.newPoll
             |> Html.map NewPoll
         ]

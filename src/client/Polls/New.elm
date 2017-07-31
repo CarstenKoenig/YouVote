@@ -155,11 +155,6 @@ form model =
                     []
                 ]
             ]
-         , div [ Attr.class "form-group" ]
-            [ label [ Attr.class "col-sm-2 control-label" ]
-                [ text "Choices" ]
-            , div [ Attr.class "col-sm-10" ] []
-            ]
          ]
             ++ viewChoices model
             ++ [ div [ Attr.class "form-group" ]
@@ -180,20 +175,27 @@ form model =
 viewChoices : Model -> List (Html Msg)
 viewChoices model =
     Dict.toList model.choices
-        |> List.map (viewChoice model)
+        |> List.indexedMap (viewChoice model)
 
 
-viewChoice : Model -> ( Int, String ) -> Html Msg
-viewChoice model ( index, text ) =
+viewChoice : Model -> Int -> ( Int, String ) -> Html Msg
+viewChoice model index ( key, txt ) =
     div [ Attr.class "form-group" ]
-        [ label [ Attr.class "col-sm-2 control-label" ] []
+        [ label [ Attr.class "col-sm-2 control-label" ]
+            [ text
+                (if index == 0 then
+                    "Choices:"
+                 else
+                    ""
+                )
+            ]
         , div [ Attr.class "col-sm-10" ]
             [ input
                 [ Attr.type_ "text"
                 , Attr.class "form-control"
                 , Attr.placeholder "Choice.."
-                , Attr.value text
-                , Ev.onInput (EditChoice index)
+                , Attr.value txt
+                , Ev.onInput (EditChoice key)
                 ]
                 []
             ]
