@@ -2,11 +2,8 @@ module Main exposing (..)
 
 import Html exposing (..)
 import Html.Attributes as Attr
-import Html.Events as Ev
-import Http
 import Navigation as Nav exposing (Location)
-import UrlParser as Url exposing ((</>))
-import Api exposing (..)
+import Routing exposing (..)
 import Polls.New as NewPoll
 
 
@@ -132,30 +129,3 @@ view model =
                 , NewPoll.view newPoll
                     |> Html.map NewPoll
                 ]
-
-
-type Route
-    = Root
-    | Create
-
-
-parseLocation : Location -> Maybe Route
-parseLocation location =
-    let
-        parser =
-            Url.oneOf
-                [ Url.map Root (Url.top)
-                , Url.map Create (Url.s "create")
-                ]
-    in
-        Url.parsePath parser location
-
-
-routeToUrl : Route -> String
-routeToUrl route =
-    case route of
-        Root ->
-            "/"
-
-        Create ->
-            "/create"
