@@ -18,7 +18,7 @@ decodePollChoice =
     decode PollChoice
         |> required "choiceId" int
         |> required "answer" string
-        |> required "votes" (maybe int)
+        |> required "votes" (nullable int)
 
 type alias Poll =
     { pollId : Int
@@ -31,7 +31,7 @@ decodePoll =
     decode Poll
         |> required "pollId" int
         |> required "question" string
-        |> required "choices" (map Dict.fromList (list (map2 (,) (index 0 int) (index 1 decodePollChoice))))
+        |> required "choices" (dict decodePollChoice  |> map (Dict.toList >> List.filterMap (\( k, v ) -> String.toInt k |> Result.toMaybe |> Maybe.map (\i -> ( i, v ))) >> Dict.fromList))
 
 type alias CreatePoll =
     { newQuestion : String
@@ -112,7 +112,7 @@ postApiPollByPollIdVoteByChoiceId urlBase capture_pollId capture_choiceId =
         , body =
             Http.emptyBody
         , expect =
-            Http.expectJson (maybe decodePoll)
+            Http.expectJson (nullable decodePoll)
         , timeout =
             Nothing
         , withCredentials =

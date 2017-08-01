@@ -5,6 +5,7 @@ import Html.Attributes as Attr
 import Navigation as Nav exposing (Location)
 import Routing exposing (..)
 import Polls.New as NewPoll
+import Polls.List as ListPolls
 
 
 type alias Model =
@@ -13,12 +14,13 @@ type alias Model =
 
 
 type Showing
-    = ShowRoot
+    = ShowRoot ListPolls.Model
     | Creating NewPoll.Model
 
 
 type Msg
     = NewPoll NewPoll.Msg
+    | ListPolls ListPolls.Msg
     | LocationChanged (Maybe Route)
     | NavigateTo Route
 
@@ -40,9 +42,13 @@ init location =
         parseLocation location
     of
         Just Root ->
-            { showing = ShowRoot
-            }
-                ! []
+            let
+                ( listModel, listCmd ) =
+                    (ListPolls.init "http://localhost:8080")
+            in
+                { showing = ShowRoot listModel
+                }
+                    ! [ Cmd.map ListPolls listCmd ]
 
         Just Create ->
             { showing = Creating (NewPoll.initialModel "http://localhost:8080")
@@ -50,9 +56,13 @@ init location =
                 ! []
 
         Nothing ->
-            { showing = ShowRoot
-            }
-                ! [ Nav.modifyUrl (routeToUrl Root) ]
+            let
+                ( listModel, listCmd ) =
+                    (ListPolls.init "http://localhost:8080")
+            in
+                { showing = ShowRoot listModel
+                }
+                    ! [ Nav.modifyUrl (routeToUrl Root), Cmd.map ListPolls listCmd ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -61,17 +71,28 @@ update msg model =
         NewPoll msg ->
             updateNewPoll msg model
 
+        ListPolls msg ->
+            updateListPolls msg model
+
         LocationChanged Nothing ->
-            { model
-                | showing = ShowRoot
-            }
-                ! [ Nav.modifyUrl (routeToUrl Root) ]
+            let
+                ( listModel, listCmd ) =
+                    (ListPolls.init "http://localhost:8080")
+            in
+                { model
+                    | showing = ShowRoot listModel
+                }
+                    ! [ Nav.modifyUrl (routeToUrl Root), Cmd.map ListPolls listCmd ]
 
         LocationChanged (Just Root) ->
-            { model
-                | showing = ShowRoot
-            }
-                ! []
+            let
+                ( listModel, listCmd ) =
+                    (ListPolls.init "http://localhost:8080")
+            in
+                { model
+                    | showing = ShowRoot listModel
+                }
+                    ! [ Cmd.map ListPolls listCmd ]
 
         LocationChanged (Just Create) ->
             { model
@@ -97,6 +118,20 @@ updateNewPoll msg model =
             model ! []
 
 
+updateListPolls : ListPolls.Msg -> Model -> ( Model, Cmd Msg )
+updateListPolls msg model =
+    case model.showing of
+        ShowRoot listPolls ->
+            let
+                ( listUpdated, listCmd ) =
+                    ListPolls.update msg listPolls
+            in
+                { model | showing = ShowRoot listUpdated } ! [ Cmd.map ListPolls listCmd ]
+
+        _ ->
+            model ! []
+
+
 viewRoot : Model -> Html Msg
 viewRoot _ =
     h1 [] [ text "Root" ]
@@ -105,12 +140,17 @@ viewRoot _ =
 view : Model -> Html Msg
 view model =
     case model.showing of
-        ShowRoot ->
+        ShowRoot listPolls ->
             div []
                 [ div [ Attr.class "row" ]
                     [ div [ Attr.class "col-sm-2" ] []
                     , div [ Attr.class "col-sm-10" ]
                         [ h3 [] [ text "YouVote" ] ]
+                    ]
+                , div [ Attr.class "row" ]
+                    [ div [ Attr.class "col-sm-2" ] []
+                    , div [ Attr.class "col-sm-10" ]
+                        [ ListPolls.view listPolls |> Html.map ListPolls ]
                     ]
                 , div [ Attr.class "row" ]
                     [ div [ Attr.class "col-sm-2" ] []
