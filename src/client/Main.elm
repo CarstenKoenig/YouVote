@@ -11,9 +11,13 @@ import Polls.New as NewPoll
 
 
 type alias Model =
-    { newPoll : Maybe NewPoll.Model
-    , route : Route
+    { showing : Showing
     }
+
+
+type Showing
+    = ShowRoot
+    | Creating NewPoll.Model
 
 
 type Msg
@@ -39,20 +43,17 @@ init location =
         parseLocation location
     of
         Just Root ->
-            { newPoll = Nothing
-            , route = Root
+            { showing = ShowRoot
             }
                 ! []
 
         Just Create ->
-            { newPoll = Just (NewPoll.initialModel "http://localhost:8080")
-            , route = Create
+            { showing = Creating (NewPoll.initialModel "http://localhost:8080")
             }
                 ! []
 
         Nothing ->
-            { newPoll = Nothing
-            , route = Root
+            { showing = ShowRoot
             }
                 ! [ Nav.modifyUrl (routeToUrl Root) ]
 
@@ -65,22 +66,19 @@ update msg model =
 
         LocationChanged Nothing ->
             { model
-                | newPoll = Nothing
-                , route = Root
+                | showing = ShowRoot
             }
                 ! [ Nav.modifyUrl (routeToUrl Root) ]
 
         LocationChanged (Just Root) ->
             { model
-                | newPoll = Nothing
-                , route = Root
+                | showing = ShowRoot
             }
                 ! []
 
         LocationChanged (Just Create) ->
             { model
-                | newPoll = Just (NewPoll.initialModel "http://localhost:8080")
-                , route = Create
+                | showing = Creating (NewPoll.initialModel "http://localhost:8080")
             }
                 ! []
 
@@ -90,16 +88,16 @@ update msg model =
 
 updateNewPoll : NewPoll.Msg -> Model -> ( Model, Cmd Msg )
 updateNewPoll msg model =
-    case model.newPoll of
-        Nothing ->
-            model ! []
-
-        Just newPoll ->
+    case model.showing of
+        Creating newPoll ->
             let
                 ( newPollUpdated, newPollCmd ) =
                     NewPoll.update msg newPoll
             in
-                { model | newPoll = Just newPollUpdated } ! [ Cmd.map NewPoll newPollCmd ]
+                { model | showing = Creating newPollUpdated } ! [ Cmd.map NewPoll newPollCmd ]
+
+        _ ->
+            model ! []
 
 
 viewRoot : Model -> Html Msg
@@ -109,8 +107,8 @@ viewRoot _ =
 
 view : Model -> Html Msg
 view model =
-    case model.newPoll of
-        Nothing ->
+    case model.showing of
+        ShowRoot ->
             div []
                 [ div [ Attr.class "row" ]
                     [ div [ Attr.class "col-sm-2" ] []
@@ -124,7 +122,7 @@ view model =
                     ]
                 ]
 
-        Just newPoll ->
+        Creating newPoll ->
             div []
                 [ div [ Attr.class "row" ]
                     [ div [ Attr.class "col-sm-2" ] []
