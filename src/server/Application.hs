@@ -18,7 +18,6 @@ import           Control.Monad.Error.Class (MonadError)
 import           Control.Monad.Logger (runStdoutLoggingT)
 import           Control.Monad.Trans.Control (MonadBaseControl)
 
-import qualified Data.Map.Strict as Map
 import           Data.List (intercalate)
 import           Data.Text (Text)
 import qualified Data.Text as Text
@@ -45,12 +44,12 @@ import qualified Database.Model as Db
 
 type Routes =
   "static" :> Raw
-  :<|> Pages
   :<|> API
+  :<|> Pages
 
 
 type Pages =
-  Get '[HTML] (Html ())
+  CaptureAll "segments" Text :> Get '[HTML] (Html ())
 
 
 type API = "api" :>
@@ -92,8 +91,8 @@ server :: (Alg.InterpretRepository m, MonadBaseControl IO m
           , Monad m, MonadError ServantErr m) => (m :~> Handler) -> Server Routes
 server embedd =
   serveDirectory "static"
-  :<|> enter embedd pagesServer
   :<|> enter embedd apiServer
+  :<|> enter embedd pagesServer
 
 
 ----------------------------------------------------------------------
@@ -152,7 +151,7 @@ createPollHandler newpoll =
 -- it actually just wraps a static html content so
 -- it only needs a general monad
 pagesServer :: Monad m => ServerT Pages m
-pagesServer = return homePage
+pagesServer = const (return homePage)
 
 
 homePage :: Html ()
@@ -160,7 +159,7 @@ homePage = do
   Html.doctype_ 
   Html.html_ [ Html.lang_ "en" ] $ do
     Html.head_ $ do
-      Html.link_ [ Html.rel_ "shortcut icon", Html.href_ "static/favicon.ico" ]
+      Html.link_ [ Html.rel_ "shortcut icon", Html.href_ "/static/favicon.ico" ]
       Html.meta_ [ Html.charset_ "utf-8" ]
       Html.meta_ [ Html.name_ "description"
                  , Html.content_ "quick voting app demo" ]
@@ -174,10 +173,10 @@ homePage = do
       Html.title_ "YouVote"
       
       -- Bootstrap
-      Html.link_ [ Html.href_ "static/css/bootstrap.min.css"
+      Html.link_ [ Html.href_ "/static/css/bootstrap.min.css"
                  , Html.rel_ "stylesheet" ]
       -- Custom css
-      Html.link_ [ Html.href_ "static/css/site.css"
+      Html.link_ [ Html.href_ "/static/css/site.css"
                  , Html.rel_ "stylesheet" ]
 
     Html.body_ $
