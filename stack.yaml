@@ -25,6 +25,7 @@ packages:
 - location:
     git: https://github.com/CarstenKoenig/elm-export.git
     commit: 2666d81b0cd338260d6367f4d8ea5ddaa9a6e4c9
+  extra-dep: true
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
