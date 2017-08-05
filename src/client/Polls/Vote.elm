@@ -1,4 +1,4 @@
-module Polls.Vote exposing (..)
+module Polls.Vote exposing (Model, Msg(VoteCast), initialModel, modelFromPoll, update, view)
 
 import Html as Html exposing (..)
 import Html.Attributes as Attr
@@ -35,11 +35,11 @@ modelFromPoll baseUrl poll =
 type Msg
     = NoOp
     | LoadPoll Int
-    | PollLoaded Poll
-    | PollLoadingError Http.Error
+    | PollLoaded PollWithoutStats
+    | PollLoadingError String
     | VoteFor Int
-    | VoteCast Poll
-    | VoteError Http.Error
+    | VoteCast PollWithStats
+    | VoteError String
 
 
 main : Program Never Model Msg
@@ -73,11 +73,7 @@ update msg model =
             -- TODO: show error
             model ! []
 
-        PollLoaded (WithStats _) ->
-            -- should be handeled in main-handler
-            model ! []
-
-        PollLoaded (WithoutStats poll) ->
+        PollLoaded poll ->
             { model
                 | pollId = poll.pollId
                 , poll = Just poll
@@ -87,17 +83,9 @@ update msg model =
         VoteFor choiceId ->
             model ! [ submitVote model.urlBase model.pollId choiceId ]
 
-        VoteCast (WithStats poll) ->
+        VoteCast poll ->
             -- should be handeled in main-handler
             model ! []
-
-        VoteCast (WithoutStats poll) ->
-            -- TODO: this is an error
-            { model
-                | pollId = poll.pollId
-                , poll = Just poll
-            }
-                ! []
 
         VoteError error ->
             -- TODO: show Error
@@ -150,9 +138,12 @@ loadPoll urlBase id =
         selectMsg res =
             case res of
                 Err err ->
-                    PollLoadingError err
+                    PollLoadingError (toString err)
 
-                Ok poll ->
+                Ok (WithStats poll) ->
+                    VoteCast poll
+
+                Ok (WithoutStats poll) ->
                     PollLoaded poll
     in
         Http.send
@@ -168,11 +159,14 @@ submitVote urlBase pollId choiceId =
     let
         selectMsg res =
             case res of
-                Ok poll ->
+                Ok (WithStats poll) ->
                     VoteCast poll
 
+                Ok (WithoutStats _) ->
+                    VoteError "invalid server answer"
+
                 Err err ->
-                    VoteError err
+                    VoteError (toString err)
     in
         Http.send
             (Result.map mapPoll >> selectMsg)

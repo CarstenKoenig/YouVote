@@ -4,7 +4,6 @@ import Html exposing (..)
 import Html.Attributes as Attr
 import Navigation as Nav exposing (Location)
 import Routing exposing (..)
-import Polls.Model exposing (..)
 import Polls.New as NewPoll
 import Polls.List as ListPolls
 import Polls.Vote as VotePoll
@@ -139,10 +138,12 @@ update msg model =
                     ! [ Cmd.map ListPolls listCmd ]
 
         LocationChanged (Just Create) ->
-            { model
-                | showing = Creating (NewPoll.initialModel model.baseUrl)
-            }
-                ! []
+            case model.showing of
+                Creating _ ->
+                    model ! []
+
+                _ ->
+                    { model | showing = Creating (NewPoll.initialModel model.baseUrl) } ! []
 
         LocationChanged (Just (Vote pId)) ->
             case model.showing of
@@ -179,7 +180,16 @@ updateNewPoll msg model =
                 ( newPollUpdated, newPollCmd ) =
                     NewPoll.update msg newPoll
             in
-                { model | showing = Creating newPollUpdated } ! [ Cmd.map NewPoll newPollCmd ]
+                case msg of
+                    NewPoll.PollCreated poll ->
+                        { model | showing = Voting (VotePoll.modelFromPoll model.baseUrl poll) }
+                            ! [ Nav.modifyUrl
+                                    (Routing.routeToUrl (Routing.Vote poll.pollId))
+                              ]
+
+                    _ ->
+                        { model | showing = Creating newPollUpdated }
+                            ! [ Cmd.map NewPoll newPollCmd ]
 
         _ ->
             model ! []
@@ -209,13 +219,7 @@ updateVotePoll msg model =
                     VotePoll.update msg votePoll
             in
                 case msg of
-                    VotePoll.PollLoaded (WithStats poll) ->
-                        { model | showing = ShowingStats (StatPoll.modelFromPoll model.baseUrl poll) }
-                            ! [ Nav.modifyUrl
-                                    (Routing.routeToUrl (Routing.Stats poll.pollId))
-                              ]
-
-                    VotePoll.VoteCast (WithStats poll) ->
+                    VotePoll.VoteCast poll ->
                         { model | showing = ShowingStats (StatPoll.modelFromPoll model.baseUrl poll) }
                             ! [ Nav.modifyUrl
                                     (Routing.routeToUrl (Routing.Stats poll.pollId))
@@ -238,7 +242,7 @@ updateStatPoll msg model =
                     StatPoll.update msg statPoll
             in
                 case msg of
-                    StatPoll.PollLoaded (WithoutStats poll) ->
+                    StatPoll.PollNeedsVote poll ->
                         { model | showing = Voting (VotePoll.modelFromPoll model.baseUrl poll) }
                             ! [ Nav.modifyUrl
                                     (Routing.routeToUrl (Routing.Vote poll.pollId))

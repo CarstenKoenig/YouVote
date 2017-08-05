@@ -1,13 +1,12 @@
-module Polls.New exposing (..)
+module Polls.New exposing (Model, Msg(PollCreated), update, view, initialModel)
 
 import Html as Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events as Ev
-import Navigation as Nav
-import Api exposing (..)
+import Api
 import Http
 import Dict exposing (Dict)
-import Routing
+import Polls.Model exposing (..)
 
 
 type alias Model =
@@ -30,7 +29,8 @@ type Msg
     | EditQuestion String
     | EditChoice Int String
     | Execute
-    | ExecuteResult (Result Http.Error Api.Poll)
+    | PollCreated PollWithoutStats
+    | PollCreationError String
 
 
 main : Program Never Model Msg
@@ -63,10 +63,21 @@ update msg model =
 
                     data =
                         Api.CreatePoll model.question choices
+
+                    selectMsg res =
+                        case res of
+                            Err error ->
+                                PollCreationError (toString error)
+
+                            Ok (WithoutStats poll) ->
+                                PollCreated poll
+
+                            Ok (WithStats _) ->
+                                PollCreationError "invalid server answer"
                 in
                     model
                         ! [ Http.send
-                                ExecuteResult
+                                (Result.map mapPoll >> selectMsg)
                                 (Api.putApiPollCreate
                                     model.urlBase
                                     data
@@ -75,19 +86,13 @@ update msg model =
             else
                 model ! []
 
-        ExecuteResult result ->
-            case result of
-                Err error ->
-                    -- TODO: show error
-                    model ! []
+        PollCreationError error ->
+            -- TODO: show error
+            model ! []
 
-                Ok poll ->
-                    model
-                        ! [ Nav.modifyUrl
-                                (Routing.routeToUrl
-                                    (Routing.Stats poll.pollId)
-                                )
-                          ]
+        PollCreated poll ->
+            -- should be handeled by main-handler
+            model ! []
 
 
 validModel : Model -> Bool

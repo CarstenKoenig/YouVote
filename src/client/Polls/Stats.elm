@@ -1,4 +1,4 @@
-module Polls.Stats exposing (..)
+module Polls.Stats exposing (Model, Msg(PollNeedsVote), initialModel, modelFromPoll, update, view)
 
 import Html as Html exposing (..)
 import Html.Attributes as Attr
@@ -34,8 +34,9 @@ modelFromPoll baseUrl poll =
 type
     Msg
     -- Nothing if there are no stats
-    = PollLoaded Poll
-    | PollLoadingError Http.Error
+    = PollLoaded PollWithStats
+    | PollNeedsVote PollWithoutStats
+    | PollLoadingError String
 
 
 main : Program Never Model Msg
@@ -59,11 +60,11 @@ update msg model =
             -- TODO: show error
             model ! []
 
-        PollLoaded (WithoutStats _) ->
-            -- this will be handeled in the main handler
+        PollNeedsVote _ ->
+            -- should be handeled by main-handler
             model ! []
 
-        PollLoaded (WithStats poll) ->
+        PollLoaded poll ->
             { model
                 | pollId = poll.pollId
                 , poll = Just poll
@@ -117,9 +118,12 @@ loadPoll urlBase id =
         selectMsg res =
             case res of
                 Err error ->
-                    PollLoadingError error
+                    PollLoadingError (toString error)
 
-                Ok poll ->
+                Ok (WithoutStats poll) ->
+                    PollNeedsVote poll
+
+                Ok (WithStats poll) ->
                     PollLoaded poll
     in
         Http.send
