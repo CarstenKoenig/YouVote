@@ -2,7 +2,6 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
@@ -38,14 +37,14 @@ testApp store =
 
 
 spec :: Spec
-spec = with (return $ testApp emptyStore) $ do
-    describe "GET /" $ do
+spec = with (return $ testApp emptyStore) $
+    describe "GET /" $
         it "responds with 200" $
             get "/" `shouldRespondWith` 200
 
 
 
-toHandler :: PollStoreState ->  (StateT PollStoreState Handler) :~> Handler
+toHandler :: PollStoreState ->  StateT PollStoreState Handler :~> Handler
 toHandler store = Nat (toHandler' store)
   where
     toHandler' :: forall a. PollStoreState -> PollStore Handler a -> Handler a
@@ -58,7 +57,7 @@ toHandler store = Nat (toHandler' store)
 type PollStore m a = StateT PollStoreState m a
 
 
-data PollStoreState =
+newtype PollStoreState =
   PollStoreState
   { polls :: Map PollId Poll
   }
@@ -69,7 +68,7 @@ emptyStore = PollStoreState Map.empty
 
 
 instance Monad m => InterpretRepository (StateT PollStoreState m) where
-  interpret = Free.iterM iterRep
+  interpret _ = Free.iterM iterRep
     where
     iterRep (RecentPolls cnt contWith) = do
       polls <- take cnt . reverse <$> State.gets (Map.elems . polls)
@@ -88,7 +87,7 @@ instance Monad m => InterpretRepository (StateT PollStoreState m) where
         added = Poll nextPId (newQuestion poll) choices
       State.modify (\s -> s { polls = Map.insert nextPId added (polls s) })
       contWith added
-    iterRep (VoteFor _ pollId choiceId cont) = do
+    iterRep (VoteFor pollId choiceId cont) = do
       choice <- getChoice pollId choiceId
       cont
         

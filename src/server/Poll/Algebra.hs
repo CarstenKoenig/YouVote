@@ -15,7 +15,7 @@ import           Poll.Models
 
 
 class InterpretRepository m where
-  interpret :: Repository a -> m a
+  interpret :: String -> Repository a -> m a
 
 
 recentPolls :: Int -> Repository [Poll]
@@ -32,9 +32,9 @@ newPoll poll =
   Free.liftF $ NewPoll poll id
 
 
-voteFor :: String -> PollId -> ChoiceId -> Repository ()
-voteFor ip pollId choiceId =
-  Free.liftF $ VoteFor ip pollId choiceId ()
+voteFor :: PollId -> ChoiceId -> Repository ()
+voteFor pollId choiceId =
+  Free.liftF $ VoteFor pollId choiceId ()
 
 type Repository = Free RepositoryF  
 
@@ -42,7 +42,7 @@ type Repository = Free RepositoryF
 data RepositoryF a
   = LoadPoll PollId (Maybe Poll -> a)
   | NewPoll CreatePoll (Poll -> a)
-  | VoteFor String PollId ChoiceId a
+  | VoteFor PollId ChoiceId a
   | RecentPolls Int ([Poll] -> a)
   deriving Functor
   

@@ -56,12 +56,11 @@ type Pages =
 
 
 type API = "api" :>
-  ("poll" :> "list" :> Get '[JSON] [Poll]
-  :<|> "poll" :> Capture "pollId" PollId :> Get '[JSON] Poll
-  :<|> "poll" :> Capture "pollId" PollId
-              :> "vote" :> Capture "choiceId" ChoiceId
-              :> RemoteHost :> Post '[JSON] ()
-  :<|> "poll" :> "create" :> ReqBody '[JSON] CreatePoll :> Put '[JSON] Poll)
+  (RemoteHost :> "poll" :> "list" :> Get '[JSON] [Poll]
+  :<|> RemoteHost :> "poll" :> Capture "pollId" PollId :> Get '[JSON] Poll
+  :<|> RemoteHost :> "poll" :> Capture "pollId" PollId
+              :> "vote" :> Capture "choiceId" ChoiceId :> Post '[JSON] ()
+  :<|> RemoteHost :> "poll" :> "create" :> ReqBody '[JSON] CreatePoll :> Put '[JSON] Poll)
 
 
 ----------------------------------------------------------------------
@@ -112,15 +111,15 @@ apiServer =
   :<|> createPollHandler
 
 
-listPollsHandler :: (Alg.InterpretRepository m) => m [Poll]
-listPollsHandler =
-  Alg.interpret (Alg.recentPolls 5)
+listPollsHandler :: (Alg.InterpretRepository m) => SockAddr -> m [Poll]
+listPollsHandler remoteAdr =
+  Alg.interpret (getAdrPart remoteAdr) $ Alg.recentPolls 5
 
 
 getPollHandler :: (MonadError ServantErr m, Alg.InterpretRepository m)
-               => PollId -> m Poll
-getPollHandler pId = do
-  found <- Alg.interpret (Alg.loadPoll pId)
+               => SockAddr -> PollId -> m Poll
+getPollHandler remoteAdr pId = do
+  found <- Alg.interpret (getAdrPart remoteAdr) $ Alg.loadPoll pId
   case found of
     Just poll -> pure poll
     Nothing -> throwError notFound
@@ -131,12 +130,12 @@ getPollHandler pId = do
 
 votePollHandler :: (Alg.InterpretRepository m
                    , MonadError ServantErr m, MonadBaseControl IO m)
-                => PollId -> ChoiceId -> SockAddr -> m ()
-votePollHandler pId cId remoteAdr =
+                => SockAddr -> PollId -> ChoiceId -> m ()
+votePollHandler remoteAdr pId cId =
   handle (\ (_ :: SomeException) -> throwError badRequest) $ do
-    Alg.interpret $ Alg.voteFor (getAdrPart remoteAdr) pId cId
+    Alg.interpret (getAdrPart remoteAdr) $ Alg.voteFor pId cId
     redirect $ "/api/poll/" `BS.append` BSC.pack (show pId)
-  where
+  where 
     redirect url = throwError (redirectRes url)
     badRequest =
       err400 { errBody = "vote already cast" }
@@ -146,9 +145,9 @@ votePollHandler pId cId remoteAdr =
              }
 
 
-createPollHandler :: Alg.InterpretRepository m => CreatePoll -> m Poll
-createPollHandler newpoll =
-  Alg.interpret (Alg.newPoll newpoll)
+createPollHandler :: Alg.InterpretRepository m => SockAddr -> CreatePoll -> m Poll
+createPollHandler remoteAdr newpoll =
+  Alg.interpret (getAdrPart remoteAdr) $ Alg.newPoll newpoll
       
 
 ----------------------------------------------------------------------
