@@ -33,6 +33,7 @@ import           Network.HTTP.Types (hLocation)
 import           Network.Socket (SockAddr(..), hostAddressToTuple, hostAddress6ToTuple)
 import           Network.Wai
 import           Network.Wai.Handler.Warp
+import           Network.Wai.Middleware.Cors
 import           Network.Wai.Middleware.RequestLogger (logStdoutDev)
 import           Servant
 import           Servant.HTML.Lucid(HTML)
@@ -80,12 +81,13 @@ startApp = do
     -- run migrations if any
     runSqlPool (runMigration Db.migrateAll) pool
     -- then run the WAI application logging to stdout with a DbHandler using the pool
-    liftIO $ run 8080 $ logStdoutDev $ app pool
+    liftIO $ run 8080 $ simpleCors $ logStdoutDev $ app pool
 
 
 -- | the Servant-Application as a WAI Application
 app :: ConnectionPool -> Application
-app pool = serve (Proxy :: Proxy Routes) (server (toDbHandler pool))
+app pool =
+  serve (Proxy :: Proxy Routes) (server (toDbHandler pool))
 
 
 -- | the Servant-Server of the Application
@@ -199,7 +201,7 @@ elmApp = do
     script =
       Text.concat
       [ "var node = document.getElementById('main');"
-      , "var app = Elm.Main.embed(node);"
+      , "var app = Elm.Main.embed(node, { baseUrl:  'http://localhost:8080' });"
       ]
   
 

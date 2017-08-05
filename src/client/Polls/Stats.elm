@@ -1,8 +1,7 @@
-module Polls.Vote exposing (..)
+module Polls.Stats exposing (..)
 
 import Html as Html exposing (..)
 import Html.Attributes as Attr
-import Html.Events as Ev
 import Navigation as Nav
 import Api exposing (..)
 import Http
@@ -27,6 +26,7 @@ type alias Poll =
 type alias Choice =
     { choiceId : Int
     , choiceText : String
+    , votes : Int
     }
 
 
@@ -39,13 +39,10 @@ initialModel urlBase pId =
         ! [ loadPoll urlBase pId ]
 
 
-type Msg
-    = NoOp
-    | LoadPoll Int
-      -- Nothing when already voted:
-    | LoadPollResult (Result Http.Error (Maybe Poll))
-    | VoteFor Int
-    | VoteResult (Result Http.Error ())
+type
+    Msg
+    -- Nothing if there are no stats
+    = LoadPollResult (Result Http.Error (Maybe Poll))
 
 
 main : Program Never Model Msg
@@ -65,16 +62,6 @@ main =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp ->
-            model ! []
-
-        LoadPoll id ->
-            { model
-                | pollId = id
-                , poll = Nothing
-            }
-                ! [ loadPoll model.urlBase id ]
-
         LoadPollResult result ->
             case result of
                 Err error ->
@@ -85,7 +72,7 @@ update msg model =
                     model
                         ! [ Nav.modifyUrl
                                 (Routing.routeToUrl
-                                    (Routing.Stats model.pollId)
+                                    (Routing.Vote model.pollId)
                                 )
                           ]
 
@@ -95,20 +82,6 @@ update msg model =
                         , poll = Just poll
                     }
                         ! []
-
-        VoteFor choiceId ->
-            -- TODO submit vote
-            model ! [ submitVote model.urlBase model.pollId choiceId ]
-
-        VoteResult result ->
-            case result of
-                _ ->
-                    model
-                        ! [ Nav.modifyUrl
-                                (Routing.routeToUrl
-                                    (Routing.Stats model.pollId)
-                                )
-                          ]
 
 
 view : Model -> Html Msg
@@ -137,25 +110,25 @@ viewPoll poll =
 
 viewChoices : Poll -> Html Msg
 viewChoices poll =
-    div
+    Html.ul
         [ Attr.class "list-group" ]
         (List.map viewChoice poll.choices)
 
 
 viewChoice : Choice -> Html Msg
 viewChoice choice =
-    Html.button
-        [ Ev.onClick (VoteFor choice.choiceId)
-        , Attr.class "list-group-item"
+    Html.li
+        [ Attr.class "list-group-item" ]
+        [ Html.span [ Attr.class "badge" ] [ text (toString choice.votes) ]
+        , text choice.choiceText
         ]
-        [ text choice.choiceText ]
 
 
 loadPoll : String -> Int -> Cmd Msg
 loadPoll urlBase id =
     let
         mapChoice c =
-            Choice c.choiceId c.answer
+            Choice c.choiceId c.answer (Maybe.withDefault 0 c.votes)
 
         statsIncluded c =
             case c.votes of
@@ -167,9 +140,9 @@ loadPoll urlBase id =
 
         mapPoll p =
             if Dict.values p.choices |> List.any statsIncluded then
-                Nothing
-            else
                 Just (Poll p.pollId p.question (Dict.values p.choices |> List.map mapChoice))
+            else
+                Nothing
     in
         Http.send
             (Result.map mapPoll >> LoadPollResult)
@@ -177,10 +150,3 @@ loadPoll urlBase id =
                 urlBase
                 id
             )
-
-
-submitVote : String -> Int -> Int -> Cmd Msg
-submitVote urlBase pollId choiceId =
-    Http.send
-        VoteResult
-        (Api.postApiPollByPollIdVoteByChoiceId urlBase pollId choiceId)

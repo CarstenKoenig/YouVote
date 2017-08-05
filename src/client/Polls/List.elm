@@ -87,7 +87,7 @@ viewPoll : Poll -> Html Msg
 viewPoll p =
     Html.a
         [ Attr.class "list-group-item"
-        , Attr.href (Routing.routeToUrl (Routing.Vote p.pollId))
+        , Attr.href (Routing.routeToUrl (Routing.Stats p.pollId))
         ]
         [ text p.question ]
 

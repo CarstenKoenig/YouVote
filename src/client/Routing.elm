@@ -8,6 +8,7 @@ type Route
     = Root
     | Create
     | Vote Int
+    | Stats Int
 
 
 parseLocation : Location -> Maybe Route
@@ -18,6 +19,7 @@ parseLocation location =
                 [ Url.map Root (Url.top)
                 , Url.map Create (Url.s "create")
                 , Url.map Vote (Url.s "poll" </> Url.int </> Url.s "vote")
+                , Url.map Stats (Url.s "poll" </> Url.int </> Url.s "stats")
                 ]
     in
         Url.parsePath parser location
@@ -34,3 +36,6 @@ routeToUrl route =
 
         Vote id ->
             "/poll/" ++ toString id ++ "/vote"
+
+        Stats id ->
+            "/poll/" ++ toString id ++ "/stats"

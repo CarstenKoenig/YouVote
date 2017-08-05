@@ -47,6 +47,7 @@ library
                      , transformers
                      , lucid
                      , wai
+                     , wai-cors
                      , wai-extra
                      , warp
   default-language:    Haskell2010
