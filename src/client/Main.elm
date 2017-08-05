@@ -118,24 +118,34 @@ update msg model =
             updateStatPoll msg model
 
         LocationChanged Nothing ->
-            let
-                ( listModel, listCmd ) =
-                    (ListPolls.init model.baseUrl)
-            in
-                { model
-                    | showing = ShowRoot listModel
-                }
-                    ! [ Nav.modifyUrl (routeToUrl Root), Cmd.map ListPolls listCmd ]
+            case model.showing of
+                ShowRoot _ ->
+                    model ! [ Nav.modifyUrl (routeToUrl Root) ]
+
+                _ ->
+                    let
+                        ( listModel, listCmd ) =
+                            (ListPolls.init model.baseUrl)
+                    in
+                        { model
+                            | showing = ShowRoot listModel
+                        }
+                            ! [ Nav.modifyUrl (routeToUrl Root), Cmd.map ListPolls listCmd ]
 
         LocationChanged (Just Root) ->
-            let
-                ( listModel, listCmd ) =
-                    (ListPolls.init model.baseUrl)
-            in
-                { model
-                    | showing = ShowRoot listModel
-                }
-                    ! [ Cmd.map ListPolls listCmd ]
+            case model.showing of
+                ShowRoot _ ->
+                    model ! [ Nav.modifyUrl (routeToUrl Root) ]
+
+                _ ->
+                    let
+                        ( listModel, listCmd ) =
+                            (ListPolls.init model.baseUrl)
+                    in
+                        { model
+                            | showing = ShowRoot listModel
+                        }
+                            ! [ Cmd.map ListPolls listCmd ]
 
         LocationChanged (Just Create) ->
             case model.showing of
