@@ -19,7 +19,6 @@ import           Control.Monad.Reader (ReaderT)
 
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import           Data.Maybe (fromJust)
 
 import qualified Database.Persist as Sql
 import qualified Database.Persist.Sql as Sql
@@ -30,43 +29,46 @@ import qualified Database.Model as Db
 import           Servant
 
 import qualified Poll.Algebra as Alg
+import           Poll.Algebra (IpAddr)
 import           Poll.Models
 
 
 type DbHandler = ReaderT ConnectionPool Handler
 
-toDbHandler :: ConnectionPool -> ReaderT ConnectionPool Handler :~> Handler
-toDbHandler pool = Nat (toHandler' pool)
+toDbHandler :: ConnectionPool -> IpAddr -> ReaderT (ConnectionPool, IpAddr) Handler :~> Handler
+toDbHandler pool ip = Nat $ toHandler' (pool, ip)
   where
-    toHandler' :: forall a. ConnectionPool -> ReaderT ConnectionPool Handler a -> Handler a
-    toHandler' p th = Reader.runReaderT th p
+    toHandler' :: forall a. (ConnectionPool, IpAddr) -> ReaderT (ConnectionPool, IpAddr) Handler a -> Handler a
+    toHandler' (p,i) th = Reader.runReaderT th (p,i)
 
 
 instance (MonadBaseControl IO m, MonadIO m) =>
-         Alg.InterpretRepository (ReaderT ConnectionPool m) where
-  interpret ip rep = do
-    pool <- Reader.ask
-    let query = Free.iterM (interpretSql ip)rep
+         Alg.InterpretRepository (ReaderT (ConnectionPool, IpAddr) m) where
+  interpret rep = do
+    (pool, ip) <- Reader.ask
+    let query = Reader.runReaderT (Free.iterM interpretSql rep) ip
     Sql.runSqlPool query pool
 
 
 interpretSql :: MonadIO m =>
-                String ->
-                Alg.RepositoryF (SqlPersistT m a) ->
-                SqlPersistT m a
-interpretSql ip (Alg.RecentPolls cnt contWith) =
-  listPolls ip cnt >>= contWith
-interpretSql ip (Alg.LoadPoll pId contWith) =
-  loadPoll pId ip >>= contWith
-interpretSql ip (Alg.NewPoll poll contWith) = do
-  pollKey <- Sql.insert $ Db.Poll (newQuestion poll)
+ Alg.RepositoryF (ReaderT IpAddr (SqlPersistT m) a) ->
+                ReaderT IpAddr (SqlPersistT m) a
+interpretSql (Alg.GetIp cont) = do
+  ip <- Reader.ask
+  cont ip
+interpretSql (Alg.RecentPolls ip cnt contWith) =
+  Reader.lift (listPolls ip cnt) >>= contWith
+interpretSql (Alg.LoadPoll ip pId contWith) =
+  Reader.lift (loadPoll pId ip) >>= contWith
+interpretSql (Alg.NewPoll ip poll contWith) = do
+  pollKey <- Reader.lift $ Sql.insert $ Db.Poll (newQuestion poll)
   mapM_ (insertChoice pollKey) (newChoices poll)
   contWith (Sql.fromSqlKey pollKey)
   where
     insertChoice key ans =
-      Sql.insert $ Db.Choice ans key
-interpretSql ip (Alg.VoteFor pId cId cont) =
-  Sql.insert (Db.Vote (Sql.toSqlKey pId) (Sql.toSqlKey cId) ip) >> cont
+      Reader.lift $ Sql.insert $ Db.Choice ans key
+interpretSql (Alg.VoteFor ip pId cId cont) =
+  Reader.lift (Sql.insert (Db.Vote (Sql.toSqlKey pId) (Sql.toSqlKey cId) ip)) >> cont
 
 
 listPolls :: forall m . MonadIO m => String -> Int-> SqlPersistT m [Poll]

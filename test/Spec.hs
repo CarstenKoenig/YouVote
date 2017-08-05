@@ -34,21 +34,21 @@ testApp :: PollStoreState -> Application
 testApp store =
   serve (Proxy :: Proxy Routes)
   $ server (toHandler store)
-
+  
 
 spec :: Spec
-spec = with (return $ testApp emptyStore) $
+spec = with (return $ testApp $ emptyStore "127.0.0.1") $
     describe "GET /" $
         it "responds with 200" $
             get "/" `shouldRespondWith` 200
 
 
 
-toHandler :: PollStoreState ->  StateT PollStoreState Handler :~> Handler
-toHandler store = Nat (toHandler' store)
+toHandler :: PollStoreState ->  IpAddr -> StateT PollStoreState Handler :~> Handler
+toHandler store ip = Nat (toHandler' store ip)
   where
-    toHandler' :: forall a. PollStoreState -> PollStore Handler a -> Handler a
-    toHandler' state th = State.evalStateT th state
+    toHandler' :: forall a. PollStoreState -> IpAddr -> PollStore Handler a -> Handler a
+    toHandler' state ip th = State.evalStateT th state
 
 
 
@@ -57,26 +57,30 @@ toHandler store = Nat (toHandler' store)
 type PollStore m a = StateT PollStoreState m a
 
 
-newtype PollStoreState =
+data PollStoreState =
   PollStoreState
   { polls :: Map PollId Poll
+  , ip :: IpAddr
   }
 
 
-emptyStore :: PollStoreState
+emptyStore :: IpAddr -> PollStoreState
 emptyStore = PollStoreState Map.empty
 
 
 instance Monad m => InterpretRepository (StateT PollStoreState m) where
-  interpret _ = Free.iterM iterRep
+  interpret = Free.iterM iterRep
     where
-    iterRep (RecentPolls cnt contWith) = do
+    iterRep (GetIp cont) = do
+      ipAdr <- State.gets ip
+      cont ipAdr
+    iterRep (RecentPolls ip cnt contWith) = do
       polls <- take cnt . reverse <$> State.gets (Map.elems . polls)
       contWith polls
-    iterRep (LoadPoll pollId contWith) = do
+    iterRep (LoadPoll ip pollId contWith) = do
       found <- State.gets (Map.lookup pollId . polls)
       contWith found
-    iterRep (NewPoll poll contWith) = do
+    iterRep (NewPoll ip poll contWith) = do
       nextPId <- nextPollId
       nextCId <- nextChoiceId
       let
@@ -86,8 +90,8 @@ instance Monad m => InterpretRepository (StateT PollStoreState m) where
           [nextCId..]
         added = Poll nextPId (newQuestion poll) choices
       State.modify (\s -> s { polls = Map.insert nextPId added (polls s) })
-      contWith added
-    iterRep (VoteFor pollId choiceId cont) = do
+      contWith nextPId
+    iterRep (VoteFor ip pollId choiceId cont) = do
       choice <- getChoice pollId choiceId
       cont
         

@@ -40,6 +40,7 @@ import           Servant
 import           Servant.HTML.Lucid(HTML)
 
 import qualified Poll.Algebra as Alg
+import           Poll.Algebra (IpAddr)
 import           Poll.Models
 import           Database.Poll
 import qualified Database.Model as Db
@@ -57,12 +58,12 @@ type Pages =
   CaptureAll "segments" Text :> Get '[HTML] (Html ())
 
 
-type API = "api" :>
-  (RemoteHost :> "poll" :> Get '[JSON] [Poll]
-  :<|> RemoteHost :> "poll" :> Capture "pollId" PollId :> Get '[JSON] Poll
-  :<|> RemoteHost :> "poll" :> Capture "pollId" PollId
-                  :> "vote" :> Capture "choiceId" ChoiceId :> Post '[JSON] Poll
-  :<|> RemoteHost :> "poll" :> "create" :> ReqBody '[JSON] CreatePoll :> Put '[JSON] Poll)
+type API = RemoteHost :> "api" :>
+  ("poll" :> Get '[JSON] [Poll]
+  :<|> "poll" :> Capture "pollId" PollId :> Get '[JSON] Poll
+  :<|> "poll" :> Capture "pollId" PollId
+              :> "vote" :> Capture "choiceId" ChoiceId :> Post '[JSON] Poll
+  :<|> "poll" :> "create" :> ReqBody '[JSON] CreatePoll :> Put '[JSON] Poll)
 
 
 ----------------------------------------------------------------------
@@ -93,11 +94,11 @@ app pool =
 
 -- | the Servant-Server of the Application
 server :: (Alg.InterpretRepository m, MonadBaseControl IO m
-          , Monad m, MonadError ServantErr m) => (m :~> Handler) -> Server Routes
+          , Monad m, MonadError ServantErr m) => (IpAddr -> m :~> Handler) -> Server Routes
 server embedd =
   serveDirectory "static"
-  :<|> enter embedd apiServer
-  :<|> enter embedd pagesServer
+  :<|> apiServer embedd
+  :<|> pagesServer
 
 
 ----------------------------------------------------------------------
@@ -106,23 +107,24 @@ server embedd =
 -- apiServer can `throwError` so we need the MonadError instance
 
 apiServer :: ( Alg.InterpretRepository m, MonadBaseControl IO m
-             , Monad m, MonadError ServantErr m) => ServerT API m
-apiServer =
-  listPollsHandler
-  :<|> getPollHandler
-  :<|> votePollHandler
-  :<|> createPollHandler
+             , Monad m, MonadError ServantErr m) => (IpAddr -> m :~> Handler) -> Server API
+apiServer embedd remoteAddr =
+  enter (embedd $ getAdrPart remoteAddr) $
+      listPollsHandler remoteAddr
+      :<|> getPollHandler remoteAddr
+      :<|> votePollHandler remoteAddr
+      :<|> createPollHandler remoteAddr
 
 
 listPollsHandler :: (Alg.InterpretRepository m) => SockAddr -> m [Poll]
 listPollsHandler remoteAdr =
-  Alg.interpret (getAdrPart remoteAdr) $ Alg.recentPolls 5
+  Alg.interpret $ Alg.recentPolls 5
 
 
 getPollHandler :: (MonadError ServantErr m, Alg.InterpretRepository m)
                => SockAddr -> PollId -> m Poll
 getPollHandler remoteAdr pId = do
-  found <- Alg.interpret (getAdrPart remoteAdr) $ Alg.loadPoll pId
+  found <- Alg.interpret $ Alg.loadPoll pId
   case found of
     Just poll -> pure poll
     Nothing -> throwError notFound
@@ -136,7 +138,7 @@ votePollHandler :: (Alg.InterpretRepository m
                 => SockAddr -> PollId -> ChoiceId -> m Poll
 votePollHandler remoteAdr pId cId =
   handle (\ (_ :: SomeException) -> throwError badRequest) $ do
-    Alg.interpret (getAdrPart remoteAdr) $ Alg.voteFor pId cId
+    Alg.interpret $ Alg.voteFor pId cId
     redirect $ "/api/poll/" `BS.append` BSC.pack (show pId)
   where 
     badRequest =
@@ -146,7 +148,7 @@ votePollHandler remoteAdr pId cId =
 createPollHandler :: ( MonadError ServantErr m, MonadBaseControl IO m
                      , Alg.InterpretRepository m) => SockAddr -> CreatePoll -> m Poll
 createPollHandler remoteAdr newpoll = do
-  pollId <- Alg.interpret (getAdrPart remoteAdr) $ Alg.newPoll newpoll
+  pollId <- Alg.interpret $ Alg.newPoll newpoll
   redirect $ "/api/poll/" `BS.append` BSC.pack (show pollId)
       
 
