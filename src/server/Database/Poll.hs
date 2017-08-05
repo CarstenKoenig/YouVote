@@ -61,8 +61,7 @@ interpretSql ip (Alg.LoadPoll pId contWith) =
 interpretSql ip (Alg.NewPoll poll contWith) = do
   pollKey <- Sql.insert $ Db.Poll (newQuestion poll)
   mapM_ (insertChoice pollKey) (newChoices poll)
-  p <- loadPoll (Sql.fromSqlKey pollKey) ip
-  contWith (fromJust p)
+  contWith (Sql.fromSqlKey pollKey)
   where
     insertChoice key ans =
       Sql.insert $ Db.Choice ans key

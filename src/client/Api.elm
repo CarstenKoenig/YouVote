@@ -92,7 +92,7 @@ getApiPollByPollId urlBase capture_pollId =
             False
         }
 
-postApiPollByPollIdVoteByChoiceId : String -> Int -> Int -> Http.Request (())
+postApiPollByPollIdVoteByChoiceId : String -> Int -> Int -> Http.Request (Poll)
 postApiPollByPollIdVoteByChoiceId urlBase capture_pollId capture_choiceId =
     Http.request
         { method =
@@ -111,13 +111,7 @@ postApiPollByPollIdVoteByChoiceId urlBase capture_pollId capture_choiceId =
         , body =
             Http.emptyBody
         , expect =
-            Http.expectStringResponse
-                (\{ body } ->
-                    if String.isEmpty body then
-                        Ok ()
-                    else
-                        Err "Expected the response body to be empty"
-                )
+            Http.expectJson decodePoll
         , timeout =
             Nothing
         , withCredentials =

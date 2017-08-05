@@ -4,6 +4,7 @@ import Html exposing (..)
 import Html.Attributes as Attr
 import Navigation as Nav exposing (Location)
 import Routing exposing (..)
+import Polls.Model exposing (..)
 import Polls.New as NewPoll
 import Polls.List as ListPolls
 import Polls.Vote as VotePoll
@@ -144,20 +145,30 @@ update msg model =
                 ! []
 
         LocationChanged (Just (Vote pId)) ->
-            let
-                ( voteModel, voteCmd ) =
-                    VotePoll.initialModel model.baseUrl pId
-            in
-                { model | showing = Voting voteModel }
-                    ! [ Cmd.map VotePoll voteCmd ]
+            case model.showing of
+                Voting _ ->
+                    model ! []
+
+                _ ->
+                    let
+                        ( voteModel, voteCmd ) =
+                            VotePoll.initialModel model.baseUrl pId
+                    in
+                        { model | showing = Voting voteModel }
+                            ! [ Cmd.map VotePoll voteCmd ]
 
         LocationChanged (Just (Stats pId)) ->
-            let
-                ( statModel, statCmd ) =
-                    StatPoll.initialModel model.baseUrl pId
-            in
-                { model | showing = ShowingStats statModel }
-                    ! [ Cmd.map StatPoll statCmd ]
+            case model.showing of
+                ShowingStats _ ->
+                    model ! []
+
+                _ ->
+                    let
+                        ( statModel, statCmd ) =
+                            StatPoll.initialModel model.baseUrl pId
+                    in
+                        { model | showing = ShowingStats statModel }
+                            ! [ Cmd.map StatPoll statCmd ]
 
 
 updateNewPoll : NewPoll.Msg -> Model -> ( Model, Cmd Msg )
@@ -197,8 +208,22 @@ updateVotePoll msg model =
                 ( newVoteModel, newVoteCmd ) =
                     VotePoll.update msg votePoll
             in
-                { model | showing = Voting newVoteModel }
-                    ! [ Cmd.map VotePoll newVoteCmd ]
+                case msg of
+                    VotePoll.PollLoaded (WithStats poll) ->
+                        { model | showing = ShowingStats (StatPoll.modelFromPoll model.baseUrl poll) }
+                            ! [ Nav.modifyUrl
+                                    (Routing.routeToUrl (Routing.Stats poll.pollId))
+                              ]
+
+                    VotePoll.VoteCast (WithStats poll) ->
+                        { model | showing = ShowingStats (StatPoll.modelFromPoll model.baseUrl poll) }
+                            ! [ Nav.modifyUrl
+                                    (Routing.routeToUrl (Routing.Stats poll.pollId))
+                              ]
+
+                    _ ->
+                        { model | showing = Voting newVoteModel }
+                            ! [ Cmd.map VotePoll newVoteCmd ]
 
         _ ->
             model ! []
@@ -212,8 +237,16 @@ updateStatPoll msg model =
                 ( newStatModel, newStatCmd ) =
                     StatPoll.update msg statPoll
             in
-                { model | showing = ShowingStats newStatModel }
-                    ! [ Cmd.map StatPoll newStatCmd ]
+                case msg of
+                    StatPoll.PollLoaded (WithoutStats poll) ->
+                        { model | showing = Voting (VotePoll.modelFromPoll model.baseUrl poll) }
+                            ! [ Nav.modifyUrl
+                                    (Routing.routeToUrl (Routing.Vote poll.pollId))
+                              ]
+
+                    _ ->
+                        { model | showing = ShowingStats newStatModel }
+                            ! [ Cmd.map StatPoll newStatCmd ]
 
         _ ->
             model ! []

@@ -3,30 +3,15 @@ module Polls.Vote exposing (..)
 import Html as Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events as Ev
-import Navigation as Nav
-import Api exposing (..)
+import Api
 import Http
-import Dict exposing (Dict)
-import Routing
+import Polls.Model exposing (..)
 
 
 type alias Model =
     { pollId : Int
-    , poll : Maybe Poll
+    , poll : Maybe PollWithoutStats
     , urlBase : String
-    }
-
-
-type alias Poll =
-    { pollId : Int
-    , question : String
-    , choices : List Choice
-    }
-
-
-type alias Choice =
-    { choiceId : Int
-    , choiceText : String
     }
 
 
@@ -39,13 +24,22 @@ initialModel urlBase pId =
         ! [ loadPoll urlBase pId ]
 
 
+modelFromPoll : String -> PollWithoutStats -> Model
+modelFromPoll baseUrl poll =
+    { pollId = poll.pollId
+    , poll = Just poll
+    , urlBase = baseUrl
+    }
+
+
 type Msg
     = NoOp
     | LoadPoll Int
-      -- Nothing when already voted:
-    | LoadPollResult (Result Http.Error (Maybe Poll))
+    | PollLoaded Poll
+    | PollLoadingError Http.Error
     | VoteFor Int
-    | VoteResult (Result Http.Error ())
+    | VoteCast Poll
+    | VoteError Http.Error
 
 
 main : Program Never Model Msg
@@ -75,39 +69,39 @@ update msg model =
             }
                 ! [ loadPoll model.urlBase id ]
 
-        LoadPollResult result ->
-            case result of
-                Err error ->
-                    -- TODO: show error
-                    model ! []
+        PollLoadingError error ->
+            -- TODO: show error
+            model ! []
 
-                Ok Nothing ->
-                    model
-                        ! [ Nav.modifyUrl
-                                (Routing.routeToUrl
-                                    (Routing.Stats model.pollId)
-                                )
-                          ]
+        PollLoaded (WithStats _) ->
+            -- should be handeled in main-handler
+            model ! []
 
-                Ok (Just poll) ->
-                    { model
-                        | pollId = poll.pollId
-                        , poll = Just poll
-                    }
-                        ! []
+        PollLoaded (WithoutStats poll) ->
+            { model
+                | pollId = poll.pollId
+                , poll = Just poll
+            }
+                ! []
 
         VoteFor choiceId ->
             model ! [ submitVote model.urlBase model.pollId choiceId ]
 
-        VoteResult result ->
-            case result of
-                _ ->
-                    model
-                        ! [ Nav.modifyUrl
-                                (Routing.routeToUrl
-                                    (Routing.Stats model.pollId)
-                                )
-                          ]
+        VoteCast (WithStats poll) ->
+            -- should be handeled in main-handler
+            model ! []
+
+        VoteCast (WithoutStats poll) ->
+            -- TODO: this is an error
+            { model
+                | pollId = poll.pollId
+                , poll = Just poll
+            }
+                ! []
+
+        VoteError error ->
+            -- TODO: show Error
+            model ! []
 
 
 view : Model -> Html Msg
@@ -120,7 +114,7 @@ view model =
             viewPoll poll
 
 
-viewPoll : Poll -> Html Msg
+viewPoll : PollWithoutStats -> Html Msg
 viewPoll poll =
     div []
         [ div [ Attr.class "row" ]
@@ -134,14 +128,14 @@ viewPoll poll =
         ]
 
 
-viewChoices : Poll -> Html Msg
+viewChoices : PollWithoutStats -> Html Msg
 viewChoices poll =
     div
         [ Attr.class "list-group" ]
         (List.map viewChoice poll.choices)
 
 
-viewChoice : Choice -> Html Msg
+viewChoice : ChoiceWithoutStats -> Html Msg
 viewChoice choice =
     Html.button
         [ Ev.onClick (VoteFor choice.choiceId)
@@ -153,25 +147,16 @@ viewChoice choice =
 loadPoll : String -> Int -> Cmd Msg
 loadPoll urlBase id =
     let
-        mapChoice c =
-            Choice c.choiceId c.answer
+        selectMsg res =
+            case res of
+                Err err ->
+                    PollLoadingError err
 
-        statsIncluded c =
-            case c.votes of
-                Nothing ->
-                    False
-
-                Just _ ->
-                    True
-
-        mapPoll p =
-            if Dict.values p.choices |> List.any statsIncluded then
-                Nothing
-            else
-                Just (Poll p.pollId p.question (Dict.values p.choices |> List.map mapChoice))
+                Ok poll ->
+                    PollLoaded poll
     in
         Http.send
-            (Result.map mapPoll >> LoadPollResult)
+            (Result.map mapPoll >> selectMsg)
             (Api.getApiPollByPollId
                 urlBase
                 id
@@ -180,6 +165,15 @@ loadPoll urlBase id =
 
 submitVote : String -> Int -> Int -> Cmd Msg
 submitVote urlBase pollId choiceId =
-    Http.send
-        VoteResult
-        (Api.postApiPollByPollIdVoteByChoiceId urlBase pollId choiceId)
+    let
+        selectMsg res =
+            case res of
+                Ok poll ->
+                    VoteCast poll
+
+                Err err ->
+                    VoteError err
+    in
+        Http.send
+            (Result.map mapPoll >> selectMsg)
+            (Api.postApiPollByPollIdVoteByChoiceId urlBase pollId choiceId)

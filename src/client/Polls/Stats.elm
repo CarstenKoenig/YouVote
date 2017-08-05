@@ -2,31 +2,15 @@ module Polls.Stats exposing (..)
 
 import Html as Html exposing (..)
 import Html.Attributes as Attr
-import Navigation as Nav
-import Api exposing (..)
+import Api
 import Http
-import Dict exposing (Dict)
-import Routing
+import Polls.Model exposing (..)
 
 
 type alias Model =
     { pollId : Int
-    , poll : Maybe Poll
+    , poll : Maybe PollWithStats
     , urlBase : String
-    }
-
-
-type alias Poll =
-    { pollId : Int
-    , question : String
-    , choices : List Choice
-    }
-
-
-type alias Choice =
-    { choiceId : Int
-    , choiceText : String
-    , votes : Int
     }
 
 
@@ -39,10 +23,19 @@ initialModel urlBase pId =
         ! [ loadPoll urlBase pId ]
 
 
+modelFromPoll : String -> PollWithStats -> Model
+modelFromPoll baseUrl poll =
+    { pollId = poll.pollId
+    , poll = Just poll
+    , urlBase = baseUrl
+    }
+
+
 type
     Msg
     -- Nothing if there are no stats
-    = LoadPollResult (Result Http.Error (Maybe Poll))
+    = PollLoaded Poll
+    | PollLoadingError Http.Error
 
 
 main : Program Never Model Msg
@@ -62,26 +55,20 @@ main =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        LoadPollResult result ->
-            case result of
-                Err error ->
-                    -- TODO: show error
-                    model ! []
+        PollLoadingError error ->
+            -- TODO: show error
+            model ! []
 
-                Ok Nothing ->
-                    model
-                        ! [ Nav.modifyUrl
-                                (Routing.routeToUrl
-                                    (Routing.Vote model.pollId)
-                                )
-                          ]
+        PollLoaded (WithoutStats _) ->
+            -- this will be handeled in the main handler
+            model ! []
 
-                Ok (Just poll) ->
-                    { model
-                        | pollId = poll.pollId
-                        , poll = Just poll
-                    }
-                        ! []
+        PollLoaded (WithStats poll) ->
+            { model
+                | pollId = poll.pollId
+                , poll = Just poll
+            }
+                ! []
 
 
 view : Model -> Html Msg
@@ -94,7 +81,7 @@ view model =
             viewPoll poll
 
 
-viewPoll : Poll -> Html Msg
+viewPoll : PollWithStats -> Html Msg
 viewPoll poll =
     div []
         [ div [ Attr.class "row" ]
@@ -108,14 +95,14 @@ viewPoll poll =
         ]
 
 
-viewChoices : Poll -> Html Msg
+viewChoices : PollWithStats -> Html Msg
 viewChoices poll =
     Html.ul
         [ Attr.class "list-group" ]
         (poll.choices |> List.sortBy (negate << .votes) |> List.map viewChoice)
 
 
-viewChoice : Choice -> Html Msg
+viewChoice : ChoiceWithStats -> Html Msg
 viewChoice choice =
     Html.li
         [ Attr.class "list-group-item" ]
@@ -127,25 +114,16 @@ viewChoice choice =
 loadPoll : String -> Int -> Cmd Msg
 loadPoll urlBase id =
     let
-        mapChoice c =
-            Choice c.choiceId c.answer (Maybe.withDefault 0 c.votes)
+        selectMsg res =
+            case res of
+                Err error ->
+                    PollLoadingError error
 
-        statsIncluded c =
-            case c.votes of
-                Nothing ->
-                    False
-
-                Just _ ->
-                    True
-
-        mapPoll p =
-            if Dict.values p.choices |> List.any statsIncluded then
-                Just (Poll p.pollId p.question (Dict.values p.choices |> List.map mapChoice))
-            else
-                Nothing
+                Ok poll ->
+                    PollLoaded poll
     in
         Http.send
-            (Result.map mapPoll >> LoadPollResult)
+            (Result.map mapPoll >> selectMsg)
             (Api.getApiPollByPollId
                 urlBase
                 id

@@ -19,6 +19,7 @@ import           Control.Monad.Logger (runStdoutLoggingT)
 import           Control.Monad.Trans.Control (MonadBaseControl)
 
 import qualified Data.ByteString as BS
+import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BSC
 import           Data.List (intercalate)
 import           Data.Text (Text)
@@ -60,7 +61,7 @@ type API = "api" :>
   (RemoteHost :> "poll" :> Get '[JSON] [Poll]
   :<|> RemoteHost :> "poll" :> Capture "pollId" PollId :> Get '[JSON] Poll
   :<|> RemoteHost :> "poll" :> Capture "pollId" PollId
-              :> "vote" :> Capture "choiceId" ChoiceId :> Post '[JSON] ()
+                  :> "vote" :> Capture "choiceId" ChoiceId :> Post '[JSON] Poll
   :<|> RemoteHost :> "poll" :> "create" :> ReqBody '[JSON] CreatePoll :> Put '[JSON] Poll)
 
 
@@ -132,25 +133,31 @@ getPollHandler remoteAdr pId = do
 
 votePollHandler :: (Alg.InterpretRepository m
                    , MonadError ServantErr m, MonadBaseControl IO m)
-                => SockAddr -> PollId -> ChoiceId -> m ()
+                => SockAddr -> PollId -> ChoiceId -> m Poll
 votePollHandler remoteAdr pId cId =
   handle (\ (_ :: SomeException) -> throwError badRequest) $ do
     Alg.interpret (getAdrPart remoteAdr) $ Alg.voteFor pId cId
     redirect $ "/api/poll/" `BS.append` BSC.pack (show pId)
   where 
-    redirect url = throwError (redirectRes url)
     badRequest =
       err400 { errBody = "vote already cast" }
-    redirectRes url =
-      err303 { errBody = "redirected"
-             , errHeaders = [(hLocation, url)]
-             }
 
-
-createPollHandler :: Alg.InterpretRepository m => SockAddr -> CreatePoll -> m Poll
-createPollHandler remoteAdr newpoll =
-  Alg.interpret (getAdrPart remoteAdr) $ Alg.newPoll newpoll
       
+createPollHandler :: ( MonadError ServantErr m, MonadBaseControl IO m
+                     , Alg.InterpretRepository m) => SockAddr -> CreatePoll -> m Poll
+createPollHandler remoteAdr newpoll = do
+  pollId <- Alg.interpret (getAdrPart remoteAdr) $ Alg.newPoll newpoll
+  redirect $ "/api/poll/" `BS.append` BSC.pack (show pollId)
+      
+
+redirect :: (MonadError ServantErr m, MonadBaseControl IO m) => ByteString -> m a
+redirect url = throwError (redirectRes url)
+  where 
+    redirectRes url =
+      err303 {  errReasonPhrase = "created"
+             , errBody = "created"
+             , errHeaders = [(hLocation, url)]
+             }      
 
 ----------------------------------------------------------------------
 -- Html Pages

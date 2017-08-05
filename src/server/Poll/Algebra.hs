@@ -27,7 +27,7 @@ loadPoll pollId =
   Free.liftF $ LoadPoll pollId id
 
 
-newPoll :: CreatePoll -> Repository Poll
+newPoll :: CreatePoll -> Repository PollId
 newPoll poll =
   Free.liftF $ NewPoll poll id
 
@@ -41,7 +41,7 @@ type Repository = Free RepositoryF
 
 data RepositoryF a
   = LoadPoll PollId (Maybe Poll -> a)
-  | NewPoll CreatePoll (Poll -> a)
+  | NewPoll CreatePoll (PollId -> a)
   | VoteFor PollId ChoiceId a
   | RecentPolls Int ([Poll] -> a)
   deriving Functor
