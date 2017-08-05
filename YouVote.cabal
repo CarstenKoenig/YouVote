@@ -22,10 +22,12 @@ library
                      , Poll.Algebra
   build-depends:       base >= 4.7 && < 5
                      , aeson
+                     , bytestring
                      , containers
                      , elm-export
                      , free
                      , http-api-data
+                     , http-types
                      , lifted-base
                      , monad-control
                      , monad-logger

@@ -18,6 +18,8 @@ import           Control.Monad.Error.Class (MonadError)
 import           Control.Monad.Logger (runStdoutLoggingT)
 import           Control.Monad.Trans.Control (MonadBaseControl)
 
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BSC
 import           Data.List (intercalate)
 import           Data.Text (Text)
 import qualified Data.Text as Text
@@ -27,6 +29,7 @@ import           Database.Persist.Sqlite (withSqlitePool)
 
 import qualified Lucid as Html
 import           Lucid (Html)
+import           Network.HTTP.Types (hLocation)
 import           Network.Socket (SockAddr(..), hostAddressToTuple, hostAddress6ToTuple)
 import           Network.Wai
 import           Network.Wai.Handler.Warp
@@ -57,7 +60,7 @@ type API = "api" :>
   :<|> "poll" :> Capture "pollId" PollId :> Get '[JSON] Poll
   :<|> "poll" :> Capture "pollId" PollId
               :> "vote" :> Capture "choiceId" ChoiceId
-              :> RemoteHost :> Post '[JSON] (Maybe Poll)
+              :> RemoteHost :> Post '[JSON] ()
   :<|> "poll" :> "create" :> ReqBody '[JSON] CreatePoll :> Put '[JSON] Poll)
 
 
@@ -128,15 +131,19 @@ getPollHandler pId = do
 
 votePollHandler :: (Alg.InterpretRepository m
                    , MonadError ServantErr m, MonadBaseControl IO m)
-                => PollId -> ChoiceId -> SockAddr -> m (Maybe Poll)
+                => PollId -> ChoiceId -> SockAddr -> m ()
 votePollHandler pId cId remoteAdr =
-  handle (\ (_ :: SomeException) -> throwError badRequest) $ 
-  Alg.interpret $
-  Alg.voteFor (getAdrPart remoteAdr) pId cId
-  >> Alg.loadPoll pId
+  handle (\ (_ :: SomeException) -> throwError badRequest) $ do
+    Alg.interpret $ Alg.voteFor (getAdrPart remoteAdr) pId cId
+    redirect $ "/api/poll/" `BS.append` BSC.pack (show pId)
   where
+    redirect url = throwError (redirectRes url)
     badRequest =
       err400 { errBody = "vote already cast" }
+    redirectRes url =
+      err303 { errBody = "redirected"
+             , errHeaders = [(hLocation, url)]
+             }
 
 
 createPollHandler :: Alg.InterpretRepository m => CreatePoll -> m Poll

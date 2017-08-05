@@ -7,6 +7,7 @@ import UrlParser as Url exposing ((</>))
 type Route
     = Root
     | Create
+    | Vote Int
 
 
 parseLocation : Location -> Maybe Route
@@ -16,6 +17,7 @@ parseLocation location =
             Url.oneOf
                 [ Url.map Root (Url.top)
                 , Url.map Create (Url.s "create")
+                , Url.map Vote (Url.s "poll" </> Url.int </> Url.s "vote")
                 ]
     in
         Url.parsePath parser location
@@ -29,3 +31,6 @@ routeToUrl route =
 
         Create ->
             "/create"
+
+        Vote id ->
+            "/poll/" ++ toString id ++ "/vote"
