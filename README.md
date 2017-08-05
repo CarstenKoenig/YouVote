@@ -1,7 +1,12 @@
 # YouVote
 
-right now this is only a simple *proof of concept*
-letting you add two numbers (yeah I know - high science)
+all the basic stuff is working - users can create polls, vote to them (only once per IP) and show the stats after they cast a vote
+
+This was both a nice and a surprising hard thing to do - I learned a lot and think I'll actually use servant
+for my hobby projects in the future.
+
+For production? Well *nope* - things like `elm-export` have issues that don't get updated/uploaded to hackage often,
+`servant` itself has no great answer to rest*ful* redirects (it's not part of the type - you do it by *throwing errors*)
 
 ## getting started
 if you have a **bash** shell available you can just use the
