@@ -57,7 +57,7 @@ type Pages =
 
 
 type API = "api" :>
-  (RemoteHost :> "poll" :> "list" :> Get '[JSON] [Poll]
+  (RemoteHost :> "poll" :> Get '[JSON] [Poll]
   :<|> RemoteHost :> "poll" :> Capture "pollId" PollId :> Get '[JSON] Poll
   :<|> RemoteHost :> "poll" :> Capture "pollId" PollId
               :> "vote" :> Capture "choiceId" ChoiceId :> Post '[JSON] ()

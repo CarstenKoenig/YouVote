@@ -255,6 +255,11 @@ view model =
                     ]
                 , NewPoll.view newPoll
                     |> Html.map NewPoll
+                , div [ Attr.class "row" ]
+                    [ div [ Attr.class "col-sm-2" ] []
+                    , div [ Attr.class "col-sm-10" ]
+                        [ a [ Attr.href (routeToUrl Root) ] [ text "back" ] ]
+                    ]
                 ]
 
         Voting votePoll ->
@@ -266,6 +271,11 @@ view model =
                     ]
                 , VotePoll.view votePoll
                     |> Html.map VotePoll
+                , div [ Attr.class "row" ]
+                    [ div [ Attr.class "col-sm-2" ] []
+                    , div [ Attr.class "col-sm-10" ]
+                        [ a [ Attr.href (routeToUrl Root) ] [ text "back" ] ]
+                    ]
                 ]
 
         ShowingStats statPoll ->
@@ -277,4 +287,9 @@ view model =
                     ]
                 , StatPoll.view statPoll
                     |> Html.map StatPoll
+                , div [ Attr.class "row" ]
+                    [ div [ Attr.class "col-sm-2" ] []
+                    , div [ Attr.class "col-sm-10" ]
+                        [ a [ Attr.href (routeToUrl Root) ] [ text "back" ] ]
+                    ]
                 ]

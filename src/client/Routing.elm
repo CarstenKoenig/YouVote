@@ -17,9 +17,9 @@ parseLocation location =
         parser =
             Url.oneOf
                 [ Url.map Root (Url.top)
-                , Url.map Create (Url.s "create")
+                , Url.map Stats (Url.s "poll" </> Url.int)
                 , Url.map Vote (Url.s "poll" </> Url.int </> Url.s "vote")
-                , Url.map Stats (Url.s "poll" </> Url.int </> Url.s "stats")
+                , Url.map Create (Url.s "poll" </> Url.s "create")
                 ]
     in
         Url.parsePath parser location
@@ -31,11 +31,11 @@ routeToUrl route =
         Root ->
             "/"
 
-        Create ->
-            "/create"
+        Stats id ->
+            "/poll/" ++ toString id
 
         Vote id ->
             "/poll/" ++ toString id ++ "/vote"
 
-        Stats id ->
-            "/poll/" ++ toString id ++ "/stats"
+        Create ->
+            "/poll/create"

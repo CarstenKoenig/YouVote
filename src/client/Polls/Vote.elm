@@ -97,7 +97,6 @@ update msg model =
                         ! []
 
         VoteFor choiceId ->
-            -- TODO submit vote
             model ! [ submitVote model.urlBase model.pollId choiceId ]
 
         VoteResult result ->

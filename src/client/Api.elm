@@ -45,8 +45,8 @@ encodeCreatePoll x =
         , ( "newChoices", (Json.Encode.list << List.map Json.Encode.string) x.newChoices )
         ]
 
-getApiPollList : String -> Http.Request (List (Poll))
-getApiPollList urlBase =
+getApiPoll : String -> Http.Request (List (Poll))
+getApiPoll urlBase =
     Http.request
         { method =
             "GET"
@@ -57,7 +57,6 @@ getApiPollList urlBase =
                 [ urlBase
                 , "api"
                 , "poll"
-                , "list"
                 ]
         , body =
             Http.emptyBody

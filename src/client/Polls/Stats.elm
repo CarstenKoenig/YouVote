@@ -112,7 +112,7 @@ viewChoices : Poll -> Html Msg
 viewChoices poll =
     Html.ul
         [ Attr.class "list-group" ]
-        (List.map viewChoice poll.choices)
+        (poll.choices |> List.sortBy (negate << .votes) |> List.map viewChoice)
 
 
 viewChoice : Choice -> Html Msg

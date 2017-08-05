@@ -99,4 +99,4 @@ mapPoll p =
 
 loadPolls : String -> Cmd Msg
 loadPolls baseUri =
-    Http.send LoadListResult (getApiPollList baseUri)
+    Http.send LoadListResult (getApiPoll baseUri)

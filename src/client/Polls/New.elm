@@ -3,9 +3,11 @@ module Polls.New exposing (..)
 import Html as Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events as Ev
+import Navigation as Nav
 import Api exposing (..)
 import Http
 import Dict exposing (Dict)
+import Routing
 
 
 type alias Model =
@@ -74,9 +76,18 @@ update msg model =
                 model ! []
 
         ExecuteResult result ->
-            -- TODO: redirect on succes
-            -- TODO: show error on failure
-            model ! []
+            case result of
+                Err error ->
+                    -- TODO: show error
+                    model ! []
+
+                Ok poll ->
+                    model
+                        ! [ Nav.modifyUrl
+                                (Routing.routeToUrl
+                                    (Routing.Stats poll.pollId)
+                                )
+                          ]
 
 
 validModel : Model -> Bool
