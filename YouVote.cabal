@@ -18,6 +18,7 @@ library
   exposed-modules:     Application
                      , Database.Model
                      , Database.Poll
+                     , Poll
                      , Poll.Models
                      , Poll.Algebra
   build-depends:       base >= 4.7 && < 5

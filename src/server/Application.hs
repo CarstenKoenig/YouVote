@@ -21,6 +21,7 @@ import           Control.Monad.Trans.Control (MonadBaseControl)
 import qualified Data.ByteString as BS
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BSC
+import qualified Data.ByteString.Lazy.Char8 as BSL
 import           Data.List (intercalate)
 import           Data.Text (Text)
 import qualified Data.Text as Text
@@ -39,10 +40,9 @@ import           Network.Wai.Middleware.RequestLogger (logStdoutDev)
 import           Servant
 import           Servant.HTML.Lucid(HTML)
 
-import qualified Poll.Algebra as Alg
-import           Poll.Algebra (IpAddr)
-import           Poll.Models
-import           Database.Poll
+import qualified Poll
+import           Poll (IpAddr, PollId, ChoiceId, PollDescription, PollVote, PollStat, CreatePoll)
+import           Database.Poll as Db
 import qualified Database.Model as Db
 
 ----------------------------------------------------------------------
@@ -58,12 +58,14 @@ type Pages =
   CaptureAll "segments" Text :> Get '[HTML] (Html ())
 
 
-type API = RemoteHost :> "api" :>
-  ("poll" :> Get '[JSON] [Poll]
-  :<|> "poll" :> Capture "pollId" PollId :> Get '[JSON] Poll
+type API = RemoteHost :> "api" :> 
+  ("polls" :> "recent" :> Get '[JSON] [PollDescription]
+  :<|> "polls" :> "my" :> Get '[JSON] [PollDescription]
+  :<|> "poll" :> Capture "pollId" PollId :> Get '[JSON] PollVote
+  :<|> "poll" :> Capture "pollId" PollId :> "stats" :> Get '[JSON] PollStat
   :<|> "poll" :> Capture "pollId" PollId
-              :> "vote" :> Capture "choiceId" ChoiceId :> Post '[JSON] Poll
-  :<|> "poll" :> "create" :> ReqBody '[JSON] CreatePoll :> Put '[JSON] Poll)
+              :> "vote" :> Capture "choiceId" ChoiceId :> Post '[JSON] PollStat
+  :<|> "poll" :> "create" :> ReqBody '[JSON] CreatePoll :> Put '[JSON] PollVote)
 
 
 ----------------------------------------------------------------------
@@ -93,7 +95,7 @@ app pool =
 
 
 -- | the Servant-Server of the Application
-server :: (Alg.InterpretRepository m, MonadBaseControl IO m
+server :: (Poll.InterpretRepository m, MonadBaseControl IO m 
           , Monad m, MonadError ServantErr m) => (IpAddr -> m :~> Handler) -> Server Routes
 server embedd =
   serveDirectory "static"
@@ -106,54 +108,75 @@ server embedd =
 
 -- apiServer can `throwError` so we need the MonadError instance
 
-apiServer :: ( Alg.InterpretRepository m, MonadBaseControl IO m
+apiServer :: ( Poll.InterpretRepository m, MonadBaseControl IO m
              , Monad m, MonadError ServantErr m) => (IpAddr -> m :~> Handler) -> Server API
 apiServer embedd remoteAddr =
   enter (embedd $ getAdrPart remoteAddr) $
-      listPollsHandler remoteAddr
-      :<|> getPollHandler remoteAddr
-      :<|> votePollHandler remoteAddr
-      :<|> createPollHandler remoteAddr
+      listRecentPollsHandler
+      :<|> listUserPollsHandler
+      :<|> getPollHandler
+      :<|> getPollStatHandler
+      :<|> votePollHandler
+      :<|> createPollHandler
 
 
-listPollsHandler :: (Alg.InterpretRepository m) => SockAddr -> m [Poll]
-listPollsHandler remoteAdr =
-  Alg.interpret $ Alg.recentPolls 5
+listRecentPollsHandler :: (Poll.InterpretRepository m) => m [PollDescription]
+listRecentPollsHandler =
+  Poll.interpret $ Poll.recentPollsList 5
 
 
-getPollHandler :: (MonadError ServantErr m, Alg.InterpretRepository m)
-               => SockAddr -> PollId -> m Poll
-getPollHandler remoteAdr pId = do
-  found <- Alg.interpret $ Alg.loadPoll pId
+listUserPollsHandler :: (Poll.InterpretRepository m) => m [PollDescription]
+listUserPollsHandler =
+  Poll.interpret Poll.userPollsList
+
+
+getPollHandler :: (MonadError ServantErr m, Poll.InterpretRepository m)
+               => PollId -> m PollVote
+getPollHandler pId = do
+  found <- Poll.interpret $ Poll.loadPollChoices pId
   case found of
-    Just poll -> pure poll
-    Nothing -> throwError notFound
+    Right poll -> pure poll
+    Left err -> throwError (badRequest $ BSL.pack err)
   where
-    notFound =
-      err404 { errBody = "poll not found" }
+    badRequest err =
+      err400 { errBody = err }
 
 
-votePollHandler :: (Alg.InterpretRepository m
-                   , MonadError ServantErr m, MonadBaseControl IO m)
-                => SockAddr -> PollId -> ChoiceId -> m Poll
-votePollHandler remoteAdr pId cId =
-  handle (\ (_ :: SomeException) -> throwError badRequest) $ do
-    Alg.interpret $ Alg.voteFor pId cId
-    redirect $ "/api/poll/" `BS.append` BSC.pack (show pId)
+getPollStatHandler :: (MonadError ServantErr m, Poll.InterpretRepository m)
+               => PollId -> m PollStat
+getPollStatHandler pId = do
+  found <- Poll.interpret $ Poll.loadPollStats pId
+  case found of
+    Right poll -> pure poll
+    Left err -> throwError (badRequest $ BSL.pack err)
+  where
+    badRequest err =
+      err400 { errBody = err }
+      
+
+
+votePollHandler :: (Poll.InterpretRepository m, MonadError ServantErr m, MonadBaseControl IO m)
+                => PollId -> ChoiceId -> m PollStat
+votePollHandler pId cId =
+  handle (\ (_ :: SomeException) -> throwError $ badRequest "sqlError") $ do
+    res <- Poll.interpret $ Poll.voteFor pId cId
+    case res of
+      Left err -> throwError (badRequest $ BSL.pack err)
+      Right () -> redirect $ "/api/poll/" `BS.append` BSC.pack (show pId) `BS.append` "/stats"
   where 
-    badRequest =
-      err400 { errBody = "vote already cast" }
+    badRequest err =
+      err400 { errBody = err }
 
       
-createPollHandler :: ( MonadError ServantErr m, MonadBaseControl IO m
-                     , Alg.InterpretRepository m) => SockAddr -> CreatePoll -> m Poll
-createPollHandler remoteAdr newpoll = do
-  pollId <- Alg.interpret $ Alg.newPoll newpoll
+createPollHandler :: ( MonadError ServantErr m, MonadBaseControl IO m, Poll.InterpretRepository m)
+                  => CreatePoll -> m PollVote
+createPollHandler newpoll = do
+  pollId <- Poll.interpret $ Poll.newPoll newpoll
   redirect $ "/api/poll/" `BS.append` BSC.pack (show pollId)
       
 
 redirect :: (MonadError ServantErr m, MonadBaseControl IO m) => ByteString -> m a
-redirect url = throwError (redirectRes url)
+redirect = throwError . redirectRes
   where 
     redirectRes url =
       err303 {  errReasonPhrase = "created"

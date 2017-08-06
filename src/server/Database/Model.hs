@@ -17,6 +17,8 @@ import           Database.Persist.TH (share, persistLowerCase
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Poll json
     question Text
+    creatorIP String
+    UniqueQuestion question
     deriving Show
 Choice json
     answer Text

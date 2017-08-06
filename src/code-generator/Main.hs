@@ -12,7 +12,7 @@ import           Servant.Elm (ElmOptions (..), defElmImports, defElmOptions,
                               generateElmForAPIWith, UrlPrefix (Dynamic))
 
 import           Application (API)
-import           Poll.Models (Poll, PollChoice, CreatePoll)
+import           Poll.Models
 
 
 elmOpts :: ElmOptions
@@ -25,10 +25,14 @@ specs :: [Spec]
 specs =
   [ Spec ["Api"]
     ( defElmImports `Text.append` "import Dict exposing (Dict)"
-      : toElmTypeSource     (Proxy :: Proxy PollChoice)
-      : toElmDecoderSource  (Proxy :: Proxy PollChoice)
-      : toElmTypeSource     (Proxy :: Proxy Poll)
-      : toElmDecoderSource  (Proxy :: Proxy Poll)
+      : toElmTypeSource     (Proxy :: Proxy PollDescription)
+      : toElmDecoderSource  (Proxy :: Proxy PollDescription)
+      : toElmTypeSource     (Proxy :: Proxy PollVote)
+      : toElmDecoderSource  (Proxy :: Proxy PollVote)
+      : toElmTypeSource     (Proxy :: Proxy PollStat)
+      : toElmDecoderSource  (Proxy :: Proxy PollStat)
+      : toElmTypeSource     (Proxy :: Proxy Stat)
+      : toElmDecoderSource  (Proxy :: Proxy Stat)
       : toElmTypeSource     (Proxy :: Proxy CreatePoll)
       : toElmEncoderSource  (Proxy :: Proxy CreatePoll)
       : generateElmForAPIWith elmOpts  (Proxy :: Proxy API))

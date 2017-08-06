@@ -7,31 +7,49 @@ import Http
 import String
 import Dict exposing (Dict)
 
-type alias PollChoice =
-    { choiceId : Int
-    , answer : String
-    , votes : Maybe (Int)
+type alias PollDescription =
+    { pdId : Int
+    , pdQuestion : String
     }
 
-decodePollChoice : Decoder PollChoice
-decodePollChoice =
-    decode PollChoice
-        |> required "choiceId" int
-        |> required "answer" string
-        |> required "votes" (nullable int)
+decodePollDescription : Decoder PollDescription
+decodePollDescription =
+    decode PollDescription
+        |> required "pdId" int
+        |> required "pdQuestion" string
 
-type alias Poll =
-    { pollId : Int
-    , question : String
-    , choices : Dict (Int) (PollChoice)
+type alias PollVote =
+    { pvQuestion : String
+    , pvChoices : Dict (Int) (String)
     }
 
-decodePoll : Decoder Poll
-decodePoll =
-    decode Poll
-        |> required "pollId" int
-        |> required "question" string
-        |> required "choices" (dict decodePollChoice  |> map (Dict.toList >> List.filterMap (\( k, v ) -> String.toInt k |> Result.toMaybe |> Maybe.map (\i -> ( i, v ))) >> Dict.fromList))
+decodePollVote : Decoder PollVote
+decodePollVote =
+    decode PollVote
+        |> required "pvQuestion" string
+        |> required "pvChoices" (dict string  |> map (Dict.toList >> List.filterMap (\( k, v ) -> String.toInt k |> Result.toMaybe |> Maybe.map (\i -> ( i, v ))) >> Dict.fromList))
+
+type alias PollStat =
+    { psQuestion : String
+    , psVotes : List (Stat)
+    }
+
+decodePollStat : Decoder PollStat
+decodePollStat =
+    decode PollStat
+        |> required "psQuestion" string
+        |> required "psVotes" (list decodeStat)
+
+type alias Stat =
+    { vChoice : String
+    , vVotes : Int
+    }
+
+decodeStat : Decoder Stat
+decodeStat =
+    decode Stat
+        |> required "vChoice" string
+        |> required "vVotes" int
 
 type alias CreatePoll =
     { newQuestion : String
@@ -45,8 +63,8 @@ encodeCreatePoll x =
         , ( "newChoices", (Json.Encode.list << List.map Json.Encode.string) x.newChoices )
         ]
 
-getApiPoll : String -> Http.Request (List (Poll))
-getApiPoll urlBase =
+getApiPollsRecent : String -> Http.Request (List (PollDescription))
+getApiPollsRecent urlBase =
     Http.request
         { method =
             "GET"
@@ -56,19 +74,44 @@ getApiPoll urlBase =
             String.join "/"
                 [ urlBase
                 , "api"
-                , "poll"
+                , "polls"
+                , "recent"
                 ]
         , body =
             Http.emptyBody
         , expect =
-            Http.expectJson (list decodePoll)
+            Http.expectJson (list decodePollDescription)
         , timeout =
             Nothing
         , withCredentials =
             False
         }
 
-getApiPollByPollId : String -> Int -> Http.Request (Poll)
+getApiPollsMy : String -> Http.Request (List (PollDescription))
+getApiPollsMy urlBase =
+    Http.request
+        { method =
+            "GET"
+        , headers =
+            []
+        , url =
+            String.join "/"
+                [ urlBase
+                , "api"
+                , "polls"
+                , "my"
+                ]
+        , body =
+            Http.emptyBody
+        , expect =
+            Http.expectJson (list decodePollDescription)
+        , timeout =
+            Nothing
+        , withCredentials =
+            False
+        }
+
+getApiPollByPollId : String -> Int -> Http.Request (PollVote)
 getApiPollByPollId urlBase capture_pollId =
     Http.request
         { method =
@@ -85,14 +128,39 @@ getApiPollByPollId urlBase capture_pollId =
         , body =
             Http.emptyBody
         , expect =
-            Http.expectJson decodePoll
+            Http.expectJson decodePollVote
         , timeout =
             Nothing
         , withCredentials =
             False
         }
 
-postApiPollByPollIdVoteByChoiceId : String -> Int -> Int -> Http.Request (Poll)
+getApiPollByPollIdStats : String -> Int -> Http.Request (PollStat)
+getApiPollByPollIdStats urlBase capture_pollId =
+    Http.request
+        { method =
+            "GET"
+        , headers =
+            []
+        , url =
+            String.join "/"
+                [ urlBase
+                , "api"
+                , "poll"
+                , capture_pollId |> toString |> Http.encodeUri
+                , "stats"
+                ]
+        , body =
+            Http.emptyBody
+        , expect =
+            Http.expectJson decodePollStat
+        , timeout =
+            Nothing
+        , withCredentials =
+            False
+        }
+
+postApiPollByPollIdVoteByChoiceId : String -> Int -> Int -> Http.Request (PollStat)
 postApiPollByPollIdVoteByChoiceId urlBase capture_pollId capture_choiceId =
     Http.request
         { method =
@@ -111,14 +179,14 @@ postApiPollByPollIdVoteByChoiceId urlBase capture_pollId capture_choiceId =
         , body =
             Http.emptyBody
         , expect =
-            Http.expectJson decodePoll
+            Http.expectJson decodePollStat
         , timeout =
             Nothing
         , withCredentials =
             False
         }
 
-putApiPollCreate : String -> CreatePoll -> Http.Request (Poll)
+putApiPollCreate : String -> CreatePoll -> Http.Request (PollVote)
 putApiPollCreate urlBase body =
     Http.request
         { method =
@@ -135,7 +203,7 @@ putApiPollCreate urlBase body =
         , body =
             Http.jsonBody (encodeCreatePoll body)
         , expect =
-            Http.expectJson decodePoll
+            Http.expectJson decodePollVote
         , timeout =
             Nothing
         , withCredentials =
