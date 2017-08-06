@@ -11,6 +11,8 @@ import           Control.Monad.State (StateT)
 
 import qualified Data.Map.Strict as Map
 import           Data.Map.Strict (Map)
+import           Data.Set (Set)
+import qualified Data.Set as Set
 import           Data.Proxy (Proxy(..))
 
 import           Network.Wai (Application)
@@ -54,12 +56,12 @@ toHandler store ip = Nat (toHandler' store ip)
 
 ----------------------------------------------------------------------
 
-type PollStore m a = StateT PollStoreState m a
+type PollStore m a = StateT PollStoreState m a 
 
 
 data PollStoreState =
   PollStoreState
-  { polls :: Map PollId Poll
+  { polls :: Map PollId PollData
   , ip :: IpAddr
   }
 
@@ -74,32 +76,36 @@ instance Monad m => InterpretRepository (StateT PollStoreState m) where
     iterRep (GetIp cont) = do
       ipAdr <- State.gets ip
       cont ipAdr
-    iterRep (RecentPolls ip cnt contWith) = do
-      polls <- take cnt . reverse <$> State.gets (Map.elems . polls)
+    iterRep (RecentPolls cnt contWith) = do
+      polls <- take cnt . reverse <$> State.gets (map toHeader . Map.elems . polls)
       contWith polls
-    iterRep (LoadPoll ip pollId contWith) = do
+    iterRep (LoadPoll pollId contWith) = do
       found <- State.gets (Map.lookup pollId . polls)
       contWith found
-    iterRep (NewPoll ip poll contWith) = do
+    iterRep (Poll.Algebra.CreatePoll ip quest cs contWith) = do
       nextPId <- nextPollId
       nextCId <- nextChoiceId
       let
         choices = Map.fromList $ zipWith
-          (\cT cId -> (cId, PollChoice cId cT Nothing))
-          (newChoices poll)
+          (\cT cId -> (cId, PollChoice nextPId cId cT Set.empty))
+          cs
           [nextCId..]
-        added = Poll nextPId (newQuestion poll) choices
+        added = PollData nextPId quest ip choices
       State.modify (\s -> s { polls = Map.insert nextPId added (polls s) })
       contWith nextPId
-    iterRep (VoteFor ip pollId choiceId cont) = do
+    iterRep (RegisterVote ip pollId choiceId cont) = do
       choice <- getChoice pollId choiceId
       cont
-        
+
+
+toHeader :: PollData -> PollHeader
+toHeader (PollData pId quest creator _) = PollHeader pId quest creator
+
 
 getChoice :: Monad m => PollId -> ChoiceId -> PollStore m (Maybe PollChoice)
 getChoice pollId choiceId  = do
   poll <- State.gets (Map.lookup pollId . polls)
-  return $ poll >>= (Map.lookup choiceId . choices)
+  return $ poll >>= (Map.lookup choiceId . pdChoices)
 
 
 
@@ -113,4 +119,4 @@ nextChoiceId :: Monad m => PollStore m ChoiceId
 nextChoiceId = do
   pMap <- State.gets polls
   return . fromIntegral
-    $ Map.foldl' (\sum p -> sum + Map.size (choices p)) 0 pMap
+    $ Map.foldl' (\sum p -> sum + Map.size (pdChoices p)) 0 pMap
