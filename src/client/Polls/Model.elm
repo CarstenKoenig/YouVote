@@ -4,11 +4,6 @@ import Api
 import Dict
 
 
-type Poll
-    = WithoutStats PollWithoutStats
-    | WithStats PollWithStats
-
-
 type alias PollWithoutStats =
     { pollId : Int
     , question : String
@@ -30,38 +25,30 @@ type alias ChoiceWithoutStats =
 
 
 type alias ChoiceWithStats =
-    { choiceId : Int
-    , choiceText : String
+    { choiceText : String
     , votes : Int
     }
 
 
-mapPoll : Api.Poll -> Poll
-mapPoll p =
+mapPollWithStat : Api.PollStat -> PollWithStats
+mapPollWithStat pollData =
     let
-        mapChoice c =
-            ChoiceWithStats c.choiceId c.answer (Maybe.withDefault 0 c.votes)
-
-        mapChoiceWithout c =
-            ChoiceWithoutStats c.choiceId c.answer
-
-        statsIncluded c =
-            case c.votes of
-                Nothing ->
-                    False
-
-                Just _ ->
-                    True
+        mapVote stat =
+            ChoiceWithStats stat.vChoice stat.vVotes
     in
-        if Dict.values p.choices |> List.any statsIncluded then
-            WithStats
-                { pollId = p.pollId
-                , question = p.question
-                , choices = Dict.values p.choices |> List.map mapChoice
-                }
-        else
-            WithoutStats
-                { pollId = p.pollId
-                , question = p.question
-                , choices = Dict.values p.choices |> List.map mapChoiceWithout
-                }
+        { pollId = pollData.psId
+        , question = pollData.psQuestion
+        , choices = pollData.psVotes |> List.map mapVote
+        }
+
+
+mapPollWithoutStat : Api.PollVote -> PollWithoutStats
+mapPollWithoutStat pollData =
+    let
+        mapChoice ( cId, cText ) =
+            ChoiceWithoutStats cId cText
+    in
+        { pollId = pollData.pvId
+        , question = pollData.pvQuestion
+        , choices = Dict.toList pollData.pvChoices |> List.map mapChoice
+        }

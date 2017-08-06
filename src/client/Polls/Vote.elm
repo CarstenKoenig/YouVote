@@ -140,14 +140,11 @@ loadPoll urlBase id =
                 Err err ->
                     PollLoadingError (toString err)
 
-                Ok (WithStats poll) ->
-                    VoteCast poll
-
-                Ok (WithoutStats poll) ->
+                Ok poll ->
                     PollLoaded poll
     in
         Http.send
-            (Result.map mapPoll >> selectMsg)
+            (Result.map mapPollWithoutStat >> selectMsg)
             (Api.getApiPollByPollId
                 urlBase
                 id
@@ -159,15 +156,12 @@ submitVote urlBase pollId choiceId =
     let
         selectMsg res =
             case res of
-                Ok (WithStats poll) ->
+                Ok poll ->
                     VoteCast poll
-
-                Ok (WithoutStats _) ->
-                    VoteError "invalid server answer"
 
                 Err err ->
                     VoteError (toString err)
     in
         Http.send
-            (Result.map mapPoll >> selectMsg)
+            (Result.map mapPollWithStat >> selectMsg)
             (Api.postApiPollByPollIdVoteByChoiceId urlBase pollId choiceId)

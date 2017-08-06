@@ -251,16 +251,8 @@ updateStatPoll msg model =
                 ( newStatModel, newStatCmd ) =
                     StatPoll.update msg statPoll
             in
-                case msg of
-                    StatPoll.PollNeedsVote poll ->
-                        { model | showing = Voting (VotePoll.modelFromPoll model.baseUrl poll) }
-                            ! [ Nav.modifyUrl
-                                    (Routing.routeToUrl (Routing.Vote poll.pollId))
-                              ]
-
-                    _ ->
-                        { model | showing = ShowingStats newStatModel }
-                            ! [ Cmd.map StatPoll newStatCmd ]
+                { model | showing = ShowingStats newStatModel }
+                    ! [ Cmd.map StatPoll newStatCmd ]
 
         _ ->
             model ! []

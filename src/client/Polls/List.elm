@@ -21,7 +21,7 @@ type alias Poll =
 
 
 type Msg
-    = LoadListResult (Result Http.Error (List Api.Poll))
+    = LoadListResult (Result Http.Error (List Api.PollDescription))
 
 
 main : Program Never Model Msg
@@ -92,11 +92,11 @@ viewPoll p =
         [ text p.question ]
 
 
-mapPoll : Api.Poll -> Poll
+mapPoll : Api.PollDescription -> Poll
 mapPoll p =
-    Poll p.pollId p.question
+    Poll p.pdId p.pdQuestion
 
 
 loadPolls : String -> Cmd Msg
 loadPolls baseUri =
-    Http.send LoadListResult (getApiPoll baseUri)
+    Http.send LoadListResult (getApiPollsRecent baseUri)

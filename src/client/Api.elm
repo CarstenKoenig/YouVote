@@ -19,24 +19,28 @@ decodePollDescription =
         |> required "pdQuestion" string
 
 type alias PollVote =
-    { pvQuestion : String
+    { pvId : Int
+    , pvQuestion : String
     , pvChoices : Dict (Int) (String)
     }
 
 decodePollVote : Decoder PollVote
 decodePollVote =
     decode PollVote
+        |> required "pvId" int
         |> required "pvQuestion" string
         |> required "pvChoices" (dict string  |> map (Dict.toList >> List.filterMap (\( k, v ) -> String.toInt k |> Result.toMaybe |> Maybe.map (\i -> ( i, v ))) >> Dict.fromList))
 
 type alias PollStat =
-    { psQuestion : String
+    { psId : Int
+    , psQuestion : String
     , psVotes : List (Stat)
     }
 
 decodePollStat : Decoder PollStat
 decodePollStat =
     decode PollStat
+        |> required "psId" int
         |> required "psQuestion" string
         |> required "psVotes" (list decodeStat)
 

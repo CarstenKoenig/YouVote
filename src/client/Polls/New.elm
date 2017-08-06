@@ -69,15 +69,12 @@ update msg model =
                             Err error ->
                                 PollCreationError (toString error)
 
-                            Ok (WithoutStats poll) ->
+                            Ok poll ->
                                 PollCreated poll
-
-                            Ok (WithStats _) ->
-                                PollCreationError "invalid server answer"
                 in
                     model
                         ! [ Http.send
-                                (Result.map mapPoll >> selectMsg)
+                                (Result.map (mapPollWithoutStat) >> selectMsg)
                                 (Api.putApiPollCreate
                                     model.urlBase
                                     data

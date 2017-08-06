@@ -47,8 +47,8 @@ loadPollStats pId = do
     Nothing -> pure $ Left "poll not found"
     Just pData ->
       if isAuthorized ipAdr pData
-      then pure $ Left "not authorized to see votes"
-      else pure $ Right $ dataToStats pData
+      then pure $ Right $ dataToStats pData
+      else pure $ Left "not authorized to see votes"
   where
     isAuthorized ipAdr pData =
       isCreator ipAdr pData || hasVoted ipAdr pData
@@ -63,8 +63,8 @@ loadPollChoices pId = do
     Nothing -> pure $ Left "poll not found"
     Just pData ->
       if isAuthorized ipAdr pData
-      then pure $ Left "not authorized to vote"
-      else pure $ Right $ dataToVote pData
+      then pure $ Right $ dataToVote pData
+      else pure $ Left "not authorized to vote"
   where
     isAuthorized ipAdr pData =
       not $ hasVoted ipAdr pData
@@ -74,12 +74,12 @@ voteFor :: PollId -> ChoiceId -> Repository (Either String ())
 voteFor pId cId = do
   ipAdr <- getIp
   pData <- loadPoll pId
-  case pData of
+  case pData of 
     Nothing -> pure $ Left "poll not found"
     Just pData ->
       if isAuthorized ipAdr pData
-      then pure $ Left "not authorized to vote"
-      else Right <$> registerVote ipAdr pId cId
+      then Right <$> registerVote ipAdr pId cId
+      else pure $ Left "not authorized to vote"
   where
     isAuthorized ipAdr pData =
       not $ hasVoted ipAdr pData
@@ -102,7 +102,7 @@ headerToDescription (PollHeader pId quest _) = PollDescription pId quest
 
 dataToStats :: PollData -> PollStat
 dataToStats pData =
-  PollStat (Poll.Algebra.pdQuestion pData) votes
+  PollStat (Poll.Algebra.pdId pData) (Poll.Algebra.pdQuestion pData) votes
   where
     votes = map choiceToStat (Map.elems $ pdChoices pData)
 
@@ -116,7 +116,7 @@ choiceToStat pChoice =
 
 dataToVote :: PollData -> PollVote
 dataToVote pData =
-  PollVote (Poll.Algebra.pdQuestion pData) choices
+  PollVote (Poll.Algebra.pdId pData) (Poll.Algebra.pdQuestion pData) choices
   where
     choices = pcChoice <$> pdChoices pData
 

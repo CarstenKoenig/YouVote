@@ -1,9 +1,11 @@
-module Polls.Stats exposing (Model, Msg(PollNeedsVote), initialModel, modelFromPoll, update, view)
+module Polls.Stats exposing (Model, Msg, initialModel, modelFromPoll, update, view)
 
 import Html as Html exposing (..)
 import Html.Attributes as Attr
+import Navigation as Nav
 import Api
 import Http
+import Routing
 import Polls.Model exposing (..)
 
 
@@ -31,11 +33,8 @@ modelFromPoll baseUrl poll =
     }
 
 
-type
-    Msg
-    -- Nothing if there are no stats
+type Msg
     = PollLoaded PollWithStats
-    | PollNeedsVote PollWithoutStats
     | PollLoadingError String
 
 
@@ -57,12 +56,8 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         PollLoadingError error ->
-            -- TODO: show error
-            model ! []
-
-        PollNeedsVote _ ->
-            -- should be handeled by main-handler
-            model ! []
+            -- there was an error - try to goto vote instead
+            model ! [ Nav.modifyUrl (Routing.routeToUrl (Routing.Vote model.pollId)) ]
 
         PollLoaded poll ->
             { model
@@ -113,22 +108,19 @@ viewChoice choice =
 
 
 loadPoll : String -> Int -> Cmd Msg
-loadPoll urlBase id =
+loadPoll urlBase pollId =
     let
         selectMsg res =
             case res of
                 Err error ->
                     PollLoadingError (toString error)
 
-                Ok (WithoutStats poll) ->
-                    PollNeedsVote poll
-
-                Ok (WithStats poll) ->
+                Ok poll ->
                     PollLoaded poll
     in
         Http.send
-            (Result.map mapPoll >> selectMsg)
-            (Api.getApiPollByPollId
+            (Result.map mapPollWithStat >> selectMsg)
+            (Api.getApiPollByPollIdStats
                 urlBase
-                id
+                pollId
             )

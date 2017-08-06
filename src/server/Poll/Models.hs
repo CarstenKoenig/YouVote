@@ -30,13 +30,15 @@ data PollDescription = PollDescription
 
 
 data PollVote = PollVote
-  { pvQuestion :: Question
+  { pvId       :: PollId
+  , pvQuestion :: Question
   , pvChoices  :: Map ChoiceId Choice
   } deriving (Eq, Show, Generic)
 
 
 data PollStat = PollStat
-  { psQuestion :: Question
+  { psId       :: PollId
+  , psQuestion :: Question
   , psVotes    :: [Stat]
   } deriving (Eq, Show, Generic)
 
