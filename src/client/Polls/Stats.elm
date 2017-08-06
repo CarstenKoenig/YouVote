@@ -3,6 +3,8 @@ module Polls.Stats exposing (Model, Msg, initialModel, modelFromPoll, update, vi
 import Html as Html exposing (..)
 import Html.Attributes as Attr
 import Navigation as Nav
+import Charty.PieChart as Chart
+import FormatNumber as Fmt
 import Api
 import Http
 import Routing
@@ -85,26 +87,61 @@ viewPoll poll =
             , div [ Attr.class "col-sm-10" ] [ h2 [] [ text poll.question ] ]
             ]
         , div [ Attr.class "row" ]
-            [ div [ Attr.class "col-sm-2" ] []
-            , div [ Attr.class "col-sm-10" ] [ viewChoices poll ]
+            [ div [ Attr.class "col-sm-3" ] []
+            , div [ Attr.class "col-sm-6" ] [ viewPie poll ]
+            , div [ Attr.class "col-sm-3" ] []
             ]
         ]
 
 
-viewChoices : PollWithStats -> Html Msg
-viewChoices poll =
-    Html.ul
-        [ Attr.class "list-group" ]
-        (poll.choices |> List.sortBy (negate << .votes) |> List.map viewChoice)
+viewPie : PollWithStats -> Html Msg
+viewPie poll =
+    let
+        groups =
+            poll.choices
+                |> List.sortBy (negate << .votes)
+                |> List.map (\ch -> ( ch.choiceText, ch.votes ))
 
+        totalCount =
+            groups
+                |> List.map (\( _, x ) -> x)
+                |> List.sum
 
-viewChoice : ChoiceWithStats -> Html Msg
-viewChoice choice =
-    Html.li
-        [ Attr.class "list-group-item" ]
-        [ Html.span [ Attr.class "badge" ] [ text (toString choice.votes) ]
-        , text choice.choiceText
-        ]
+        formatLabel name cnt perc =
+            let
+                percent =
+                    Fmt.format
+                        { decimals = 1
+                        , thousandSeparator = "."
+                        , decimalSeparator = ","
+                        , negativePrefix = "−"
+                        , negativeSuffix = ""
+                        }
+                        perc
+            in
+                name
+                    ++ " - "
+                    ++ percent
+                    ++ "%  ("
+                    ++ toString cnt
+                    ++ "/"
+                    ++ toString totalCount
+                    ++ ")"
+
+        dataset =
+            groups
+                |> List.map
+                    (\( l, x ) ->
+                        let
+                            perc =
+                                100.0 * toFloat x / toFloat totalCount
+                        in
+                            { label = formatLabel l x perc
+                            , value = perc
+                            }
+                    )
+    in
+        Chart.view Chart.defaults dataset
 
 
 loadPoll : String -> Int -> Cmd Msg

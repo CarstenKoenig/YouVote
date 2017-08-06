@@ -281,7 +281,12 @@ view model =
                 , div [ Attr.class "row" ]
                     [ div [ Attr.class "col-sm-2" ] []
                     , div [ Attr.class "col-sm-10" ]
-                        [ a [ Attr.href (routeToUrl Create) ] [ text "new poll" ] ]
+                        [ a
+                            [ Attr.class "btn btn-primary"
+                            , Attr.href (routeToUrl Create)
+                            ]
+                            [ text "new poll" ]
+                        ]
                     ]
                 ]
 
@@ -297,7 +302,12 @@ view model =
                 , div [ Attr.class "row" ]
                     [ div [ Attr.class "col-sm-2" ] []
                     , div [ Attr.class "col-sm-10" ]
-                        [ a [ Attr.href (routeToUrl Root) ] [ text "back" ] ]
+                        [ a
+                            [ Attr.class "btn btn-primary"
+                            , Attr.href (routeToUrl Root)
+                            ]
+                            [ text "back" ]
+                        ]
                     ]
                 ]
 
@@ -313,7 +323,12 @@ view model =
                 , div [ Attr.class "row" ]
                     [ div [ Attr.class "col-sm-2" ] []
                     , div [ Attr.class "col-sm-10" ]
-                        [ a [ Attr.href (routeToUrl Root) ] [ text "back" ] ]
+                        [ a
+                            [ Attr.class "btn btn-primary"
+                            , Attr.href (routeToUrl Root)
+                            ]
+                            [ text "back" ]
+                        ]
                     ]
                 ]
 
@@ -329,6 +344,11 @@ view model =
                 , div [ Attr.class "row" ]
                     [ div [ Attr.class "col-sm-2" ] []
                     , div [ Attr.class "col-sm-10" ]
-                        [ a [ Attr.href (routeToUrl Root) ] [ text "back" ] ]
+                        [ a
+                            [ Attr.class "btn btn-primary"
+                            , Attr.href (routeToUrl Root)
+                            ]
+                            [ text "back" ]
+                        ]
                     ]
                 ]
